@@ -390,6 +390,7 @@ opts.AddVariables(
     # Variables for logging and statistics
     BoolVariable('ENABLE_LOG', 'Enable logging, which is enabled by default when building in *debug*', 'False'),
     BoolVariable('ENABLE_STATS', 'Enable global statistics during map processing', 'False'),
+    BoolVariable('ENABLE_METRICS', 'Enable internal metrics during map processing', 'True'),
     ('DEFAULT_LOG_SEVERITY', 'The default severity of the logger (eg. ' + ', '.join(severities) + ')', 'error'),
 
     # Plugin linking
@@ -1393,6 +1394,7 @@ if not preconfigured:
         ['harfbuzz', 'harfbuzz/hb.h',True,'C++']
     ]
 
+    CHECK_PKG_CONFIG = conf.CheckPKGConfig('0.15.0')
     if env.get('FREETYPE_LIBS') or env.get('FREETYPE_INCLUDES'):
         REQUIRED_LIBSHEADERS.insert(0,['freetype','ft2build.h',True,'C'])
         if env.get('FREETYPE_INCLUDES'):
@@ -1401,6 +1403,21 @@ if not preconfigured:
         if env.get('FREETYPE_LIBS'):
             lib_path = env['FREETYPE_LIBS']
             env.AppendUnique(LIBPATH = fix_path(lib_path))
+    elif CHECK_PKG_CONFIG and conf.CheckPKG('freetype2'):
+        # Freetype 2.9+ doesn't use freetype-config and uses pkg-config instead
+        cmd = 'pkg-config freetype2 --libs --cflags'
+        if env['RUNTIME_LINK'] == 'static':
+            cmd += ' --static'
+
+        temp_env = Environment(ENV=os.environ)
+        try:
+            temp_env.ParseConfig(cmd)
+            for lib in temp_env['LIBS']:
+                env.AppendUnique(LIBPATH = fix_path(lib))
+            for inc in temp_env['CPPPATH']:
+                env.AppendUnique(CPPPATH = fix_path(inc))
+        except OSError as e:
+            pass
     elif conf.parse_config('FREETYPE_CONFIG'):
         # check if freetype links to bz2
         if env['RUNTIME_LINK'] == 'static':
@@ -1634,8 +1651,6 @@ if not preconfigured:
             color_print(1,'%s not detected on your system' % env['QUERIED_ICU_DATA'] )
             env['MISSING_DEPS'].append('ICU_DATA')
 
-
-    CHECK_PKG_CONFIG = conf.CheckPKGConfig('0.15.0')
 
     if len(env['REQUESTED_PLUGINS']):
         if env['HOST']:
@@ -1930,6 +1945,10 @@ if not preconfigured:
         if env['ENABLE_STATS']:
             debug_defines.append('-DMAPNIK_STATS')
             ndebug_defines.append('-DMAPNIK_STATS')
+
+        # Enable metrics
+        if env['ENABLE_METRICS']:
+            env.Append(CPPDEFINES = '-DMAPNIK_METRICS')
 
         # Add rdynamic to allow using statics between application and plugins
         # http://stackoverflow.com/questions/8623657/multiple-instances-of-singleton-across-shared-libraries-on-linux
