@@ -159,11 +159,11 @@ public:
      * @param value - Value to increment. Default = 1
      * @param type - Type of the stored metric. Default: VALUE
      */
-    inline void measure_add(const char* const name, int64_t value = 1,
+    inline void measure_add(const char* const name, int64_t m_value = 1,
                             measurement_t type = measurement_t::VALUE)
     {
         if (!enabled_) return;
-        measure_add_impl(name, value, type);
+        measure_add_impl(name, m_value, type);
     }
 
     /**
@@ -182,7 +182,7 @@ public:
 
 private:
     std::unique_ptr<autochrono> measure_time_impl(const char* const name);
-    void measure_add_impl(const char* const name, int64_t value, measurement_t type);
+    void measure_add_impl(const char* const name, int64_t m_value, measurement_t type);
 
     std::shared_ptr<metrics_array> storage_ = nullptr;
 public:

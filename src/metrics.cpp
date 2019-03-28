@@ -101,7 +101,7 @@ std::unique_ptr<autochrono> metrics::measure_time_impl(const char* const name)
     return std::make_unique<autochrono>(this, name);
 }
 
-void metrics::measure_add_impl(const char* const name, int64_t value, measurement_t type)
+void metrics::measure_add_impl(const char* const name, int64_t m_value, measurement_t type)
 {
     auto it = std::find_if(storage_->begin(), storage_->end(), [&](const measurement& m)
     {
@@ -110,11 +110,11 @@ void metrics::measure_add_impl(const char* const name, int64_t value, measuremen
 
     if (it == storage_->end())
     {
-        storage_->emplace_back(name, value, type);
+        storage_->emplace_back(name, m_value, type);
     }
     else
     {
-        it->value_ += value;
+        it->value_ += m_value;
         it->calls_++;
     }
 }
