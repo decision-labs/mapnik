@@ -31,11 +31,11 @@ matrix:
     - os: linux
       sudo: false
       compiler: ": clang"
-      env: JOBS=8 CXX="ccache clang++-3.9 -Qunused-arguments" CC="clang-3.9" ENABLE_GLIBC_WORKAROUND=true TRIGGER=true
+      env: JOBS=8 CXX="ccache clang++-3.9 --gcc-toolchain=/usr/lib/gcc/x86_64-linux-gnu/4.9 -Qunused-arguments" CC="clang-3.9 --gcc-toolchain=/usr/lib/gcc/x86_64-linux-gnu/4.9" ENABLE_GLIBC_WORKAROUND=true TRIGGER=true
       addons:
         apt:
           sources: [ 'ubuntu-toolchain-r-test']
-          packages: [ 'libstdc++-4.9-dev', 'xutils-dev']
+          packages: [ 'gcc-4.9', 'g++4.9', 'libstdc++-4.9-dev', 'xutils-dev']
     - os: osx
       compiler: ": clang-osx"
       # https://docs.travis-ci.com/user/languages/objective-c/#Supported-OS-X-iOS-SDK-versions
@@ -54,9 +54,6 @@ before_install:
  - export COVERAGE=${COVERAGE:-false}
  - export BENCH=${BENCH:-false}
  - export ENABLE_GLIBC_WORKAROUND=${ENABLE_GLIBC_WORKAROUND:-false}
- - enabled ${ENABLE_GLIBC_WORKAROUND} sudo update-alternatives --remove-all gcc
- - enabled ${ENABLE_GLIBC_WORKAROUND} sudo update-alternatives --remove-all g++
- - enabled ${ENABLE_GLIBC_WORKAROUND} sudo apt-get install gcc-4.9
  - git_submodule_update --init
 
 install:
