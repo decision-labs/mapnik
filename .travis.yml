@@ -53,6 +53,10 @@ before_install:
  - export PATH=${PREFIX}/bin:$(pwd)/mason_packages/.link/bin:${PATH}
  - export COVERAGE=${COVERAGE:-false}
  - export BENCH=${BENCH:-false}
+ - export ENABLE_GLIBC_WORKAROUND=${ENABLE_GLIBC_WORKAROUND:-false}
+ - enabled ${ENABLE_GLIBC_WORKAROUND} sudo update-alternatives --remove-all gcc
+ - enabled ${ENABLE_GLIBC_WORKAROUND} sudo update-alternatives --remove-all g++
+ - enabled ${ENABLE_GLIBC_WORKAROUND} sudo apt-get install gcc-4.9
  - git_submodule_update --init
 
 install:
