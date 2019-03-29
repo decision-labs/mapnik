@@ -1,10 +1,14 @@
 # CARTO Mapnik Changelog
 
 ## 3.0.15.10
-**Release date**: 2018-XX-XX
+**Release date**: 2018-03-29
 
 Changes:
  - Improve clip calculation to avoid issues when using offset.
+ - Update to match upstream 3.0.22 (our release still is 3.0.15).
+ - Test and build using Xenial and clang 5.0.0 (which was already teh default in mason)
+ - Switch to harfbuzz 1.4.4-ft (reverts the change in 3.0.15.3)
+ - Backport compatibility patches (ICU, clang, boost).
 
 
 ## 3.0.15.9
