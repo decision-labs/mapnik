@@ -31,7 +31,7 @@ matrix:
     - os: linux
       sudo: false
       compiler: ": clang"
-      env: JOBS=8 CXX="ccache clang++-3.9 --gcc-toolchain=/usr/lib/gcc/x86_64-linux-gnu/4.9 -Qunused-arguments" CC="clang-3.9 --gcc-toolchain=/usr/lib/gcc/x86_64-linux-gnu/4.9" ENABLE_GLIBC_WORKAROUND=true TRIGGER=true
+      env: JOBS=8 CXX="ccache clang++-3.9 -Qunused-arguments" CC="clang-3.9" ENABLE_GLIBC_WORKAROUND=true TRIGGER=true LD_LIBRARY_PATH="/usr/lib/gcc/x86_64-linux-gnu/4.9" CUSTOM_LDFLAGS="/usr/lib/gcc/x86_64-linux-gnu/4.9"
       addons:
         apt:
           sources: [ 'ubuntu-toolchain-r-test']
