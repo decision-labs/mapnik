@@ -35,7 +35,7 @@ matrix:
       addons:
         apt:
           sources: [ 'ubuntu-toolchain-r-test']
-          packages: [ 'gcc-4.9', 'g++4.9', 'libstdc++-4.9-dev', 'xutils-dev']
+          packages: [ 'gcc-4.9', 'g++-4.9', 'libstdc++-4.9-dev', 'xutils-dev']
     - os: osx
       compiler: ": clang-osx"
       # https://docs.travis-ci.com/user/languages/objective-c/#Supported-OS-X-iOS-SDK-versions
