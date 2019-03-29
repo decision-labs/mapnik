@@ -31,11 +31,7 @@ matrix:
     - os: linux
       sudo: false
       compiler: ": clang"
-      env: JOBS=8 CXX="ccache clang++-3.9 -Qunused-arguments" CC="clang-3.9" ENABLE_GLIBC_WORKAROUND=true TRIGGER=true LD_LIBRARY_PATH="/usr/lib/gcc/x86_64-linux-gnu/4.9" CUSTOM_LDFLAGS="/usr/lib/gcc/x86_64-linux-gnu/4.9"
-      addons:
-        apt:
-          sources: [ 'ubuntu-toolchain-r-test']
-          packages: [ 'gcc-4.9', 'g++-4.9', 'libstdc++-4.9-dev', 'xutils-dev']
+      env: JOBS=8 CXX="ccache clang++-5.0 -Qunused-arguments" CC="clang-5.0" TRIGGER=true
     - os: osx
       compiler: ": clang-osx"
       # https://docs.travis-ci.com/user/languages/objective-c/#Supported-OS-X-iOS-SDK-versions
@@ -79,12 +75,12 @@ before_script:
  - source bootstrap.sh
  - |
    if [[ $(uname -s) == 'Linux' ]]; then
-     mason install clang++ 3.9.1
-     export PATH=$(mason prefix clang++ 3.9.1)/bin:${PATH}
-     mason install llvm-cov 3.9.1
-     export PATH=$(mason prefix llvm-cov 3.9.1)/bin:${PATH}
+     mason install clang++ 5.0.0
+     export PATH=$(mason prefix clang++ 5.0.0)/bin:${PATH}
+     mason install llvm-cov 5.0.0
+     export PATH=$(mason prefix llvm-cov 5.0.0)/bin:${PATH}
      which llvm-cov
-     export LLVM_COV="$(mason prefix llvm-cov 3.9.1)/bin/llvm-cov"
+     export LLVM_COV="$(mason prefix llvm-cov 5.0.0)/bin/llvm-cov"
    fi
  - ccache --version
  - ccache -p || true
