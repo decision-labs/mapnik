@@ -1,7 +1,14 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.12
+**Release date**: 2019-XX-XX
+
+Changes:
+ - More ubsan warnings. Changes the behaviour of the debug symbolizer when the box starts outside of the tile (x or y less than 0), as they will be clipped by size_t::lowest().
+ - Some other compiler warnings addressed.
+
 ## 3.0.15.11
-**Release date**: 2018-04-05
+**Release date**: 2019-04-05
 
 Changes:
  - Backport fixes related to UBSan from upstream/master (not in 3.0.x).
@@ -9,7 +16,7 @@ Changes:
  - Fix UB in deps/agg. Sent upstream.
 
 ## 3.0.15.10
-**Release date**: 2018-03-29
+**Release date**: 2019-03-29
 
 Changes:
  - Improve clip calculation to avoid issues when using offset.
