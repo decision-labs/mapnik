@@ -78,7 +78,7 @@ public:
 
 struct MAPNIK_DECL measurement
 {
-    measurement() = default;
+    measurement() = delete;
     explicit measurement(const char* const name,
                          int64_t value,
                          measurement_t type = measurement_t::UNASSIGNED);

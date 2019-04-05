@@ -1,5 +1,13 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.11
+**Release date**: 2018-04-03
+
+Changes:
+ - Backport fixes related to UBSan.
+ - Address some warnings.
+ - Fix UB in agg::iround and agg::uround (sent upstream).
+
 ## 3.0.15.10
 **Release date**: 2018-03-29
 
