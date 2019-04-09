@@ -1,5 +1,11 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.13
+**Release date**: 2019-04-09
+
+Changes:
+ - Avoid heap-buffer-overflow in agg::rasterizer_cells_aa<Cell>::sort_cells.
+
 ## 3.0.15.12
 **Release date**: 2019-04-08
 
