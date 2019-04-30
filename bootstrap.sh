@@ -59,7 +59,7 @@ function install_mason_deps() {
     install icu ${ICU_VERSION}
     install proj 4.9.3 libproj
     install pixman 0.34.0 libpixman-1
-    install cairo 1.14.8 libcairo
+    install cairo 1.14.12 libcairo
     install protobuf 3.2.0
     # technically protobuf is not a mapnik core dep, but installing
     # here by default helps make mapnik-vector-tile builds easier

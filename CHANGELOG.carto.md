@@ -15,6 +15,7 @@ Changes:
     - libtiff to 4.0.8 (was 4.0.7)
     - sqlite to 3.21.0 (was 3.17.0)
     - libgdal 2.4.1 (was 2.1.3)
+    - cairo 1.14.12 (was 1.14.8)
 
 ## 3.0.15.13
 **Release date**: 2019-04-09
