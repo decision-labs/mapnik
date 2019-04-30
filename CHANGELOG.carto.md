@@ -16,6 +16,7 @@ Changes:
     - sqlite to 3.21.0 (was 3.17.0)
     - libgdal 2.4.1 (was 2.1.3)
     - cairo 1.14.12 (was 1.14.8)
+    - zlib to 1.2.11 (was 1.2.8)
 
 ## 3.0.15.13
 **Release date**: 2019-04-09

@@ -49,7 +49,7 @@ BOOST_VERSION="1.65.1"
 
 function install_mason_deps() {
     install ccache 3.3.1
-    install zlib 1.2.8
+    install zlib 1.2.11
     install jpeg_turbo 1.5.2 libjpeg
     install libpng 1.6.37 libpng
     install libtiff 4.0.8 libtiff
