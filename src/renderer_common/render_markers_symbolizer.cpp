@@ -28,6 +28,8 @@
 #include <mapnik/renderer_common/render_markers_symbolizer.hpp>
 #include <mapnik/symbolizer.hpp>
 
+#include <memory>
+
 namespace mapnik {
 
 namespace detail {
@@ -121,18 +123,17 @@ struct render_marker_symbolizer_visitor
     void operator() (marker_svg const& mark)
     {
         using namespace mapnik::svg;
-        auto &csym = const_cast<markers_symbolizer &>(sym_);
-        if (csym.cacheable == markers_symbolizer::cache_status::UNCHECKED)
+        if (sym_.get_cache_state() == markers_symbolizer::cache_status_enum::UNCHECKED)
         {
-            if (std::all_of(csym.properties.begin(), csym.properties.end(),
+            if (std::all_of(sym_.properties.begin(), sym_.properties.end(),
                 [](symbolizer_base::cont_type::value_type const& key_prop)
                   { return !is_expression(key_prop.second);}))
             {
-                csym.cacheable = markers_symbolizer::cache_status::CACHEABLE;
+                sym_.set_cache_state(markers_symbolizer::cache_status_enum::CACHEABLE);
             }
             else
             {
-                csym.cacheable = markers_symbolizer::cache_status::UNCACHEABLE;
+                sym_.set_cache_state(markers_symbolizer::cache_status_enum::UNCACHEABLE);
             }
         }
 
@@ -147,11 +148,11 @@ struct render_marker_symbolizer_visitor
         std::shared_ptr<svg_attribute_type> r_attributes = nullptr;
 
         bool cacheable = !renderer_context_.symbolizer_caches_disabled_ &&
-                (csym.cacheable == markers_symbolizer::cache_status::CACHEABLE);
+                (sym_.get_cache_state() == markers_symbolizer::cache_status_enum::CACHEABLE);
 
         if (cacheable)
         {
-            r_attributes = csym.cached_attributes;
+            r_attributes = std::atomic_load(&sym_.cached_attributes);
         }
 
         if (r_attributes == nullptr)
@@ -160,45 +161,37 @@ struct render_marker_symbolizer_visitor
             svg_attribute_type s_attributes;
             r_attributes = std::make_shared<svg_attribute_type>(get_marker_attributes(*stock_vector_marker, s_attributes));
 
-            if (cacheable)
-            {
-                csym.cached_attributes = r_attributes;
-            }
+            std::atomic_store(&sym_.cached_attributes, r_attributes);
         }
 
         if (filename_ != "shape://ellipse" ||
-            !((has_key(csym,keys::width) || has_key(csym,keys::height))))
+            !((has_key(sym_,keys::width) || has_key(sym_,keys::height))))
         {
             box2d<double> const& bbox = mark.bounding_box();
-            setup_transform_scaling(image_tr, bbox.width(), bbox.height(), feature_, common_.vars_, csym);
+            setup_transform_scaling(image_tr, bbox.width(), bbox.height(), feature_, common_.vars_, sym_);
         }
         else
         {
             // special case for simple ellipse markers to allow for full control over rx/ry dimensions
             // Ellipses are built procedurally. We do caching of the built ellipses, this is useful for rendering stages
 
-            marker_ptr = cacheable ? csym.cached_ellipse : nullptr;
+            marker_ptr = cacheable ? std::atomic_load(&sym_.cached_ellipse) : nullptr;
             if (!marker_ptr)
             {
                 renderer_context_.metrics_.measure_add("Agg_PMS_EllipseCache_Miss");
                 marker_ptr = std::make_shared<svg_storage_type>();
                 vertex_stl_adapter<svg_path_storage> stl_storage(marker_ptr->source());
                 svg_path_adapter svg_path(stl_storage);
-                build_ellipse(csym, feature_, common_.vars_, *marker_ptr, svg_path);
+                build_ellipse(sym_, feature_, common_.vars_, *marker_ptr, svg_path);
 
-                // Since the symbolizer has either width or height and their value isn't
-                // an expression we can cache the output of the ellipse per symbolizer
-                if (cacheable)
-                {
-                    csym.cached_ellipse = marker_ptr;
-                }
+                std::atomic_store(&sym_.cached_ellipse,  marker_ptr);
             }
         }
 
         vertex_stl_adapter<svg_path_storage> stl_storage(marker_ptr->source());
         svg_path_adapter svg_path(stl_storage);
 
-        if (auto image_transform = get_optional<transform_type>(csym, keys::image_transform))
+        if (auto image_transform = get_optional<transform_type>(sym_, keys::image_transform))
         {
             evaluate_transform(image_tr, feature_, common_.vars_, *image_transform, common_.scale_factor_);
         }
@@ -207,7 +200,7 @@ struct render_marker_symbolizer_visitor
                                                  svg_path,
                                                  *r_attributes,
                                                  image_tr,
-                                                 csym,
+                                                 sym_,
                                                  *common_.detector_,
                                                  common_.scale_factor_,
                                                  feature_,

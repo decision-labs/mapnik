@@ -34,8 +34,8 @@
 #include "agg_trans_affine.h"
 #pragma GCC diagnostic pop
 
+#include <array>
 #include <utility>
-#include <vector>
 
 namespace mapnik {
 namespace svg {
@@ -65,16 +65,20 @@ struct path_attributes
     dash_array   dash;
     double       dash_offset;
 
-    struct cache_line
-    {
-        std::shared_ptr<image_rgba8> fill_img = nullptr;
-        std::shared_ptr<image_rgba8> stroke_img = nullptr;
-        bool set = false;
-    };
-    std::vector<cache_line> cached_images;
     // this determines subpixel precision. The larger the value, the closer the solution
     // will be compared to the reference but will reduce the cache hits
     static constexpr int sampling_rate = 8;
+    struct cache_line
+    {
+        cache_line()
+            :fill_img(nullptr), stroke_img(nullptr), set(false)
+        {}
+        std::shared_ptr<image_rgba8> fill_img = { nullptr };
+        std::shared_ptr<image_rgba8> stroke_img { nullptr };
+        std::atomic<bool> set { false };
+    };
+    using cache_array = std::array<cache_line, sampling_rate * sampling_rate>;
+    std::shared_ptr<cache_array> cached_images { nullptr };
 
     // Empty constructor
     path_attributes() :
@@ -100,7 +104,7 @@ struct path_attributes
         display_flag(true),
         dash(),
         dash_offset(0.0),
-        cached_images({})
+        cached_images(new cache_array)
     {}
 
     // Copy constructor
@@ -127,7 +131,7 @@ struct path_attributes
           display_flag(attr.display_flag),
           dash(attr.dash),
           dash_offset(attr.dash_offset),
-          cached_images(attr.cached_images)
+          cached_images(new cache_array)
     {}
 
     // Copy constructor with new index value
@@ -154,8 +158,36 @@ struct path_attributes
           display_flag(attr.display_flag),
           dash(attr.dash),
           dash_offset(attr.dash_offset),
-          cached_images(attr.cached_images)
+          cached_images(new cache_array)
     {}
+
+    path_attributes& operator=(const path_attributes& attr)
+    {
+        fill_gradient = attr.fill_gradient;
+        stroke_gradient = attr.stroke_gradient;
+        transform = attr.transform;
+        opacity = attr.opacity;
+        fill_opacity = attr.fill_opacity;
+        stroke_opacity = attr.stroke_opacity;
+        miter_limit = attr.miter_limit;
+        index = attr.index;
+        fill_color = attr.fill_color;
+        stroke_color = attr.stroke_color;
+        line_join = attr.line_join;
+        line_cap = attr.line_cap;
+        fill_flag = attr.fill_flag;
+        fill_none = attr.fill_none;
+        stroke_flag = attr.stroke_flag;
+        stroke_none = attr.stroke_none;
+        even_odd_flag = attr.even_odd_flag;
+        visibility_flag = attr.visibility_flag;
+        display_flag = attr.display_flag;
+        dash = attr.dash;
+        dash_offset = attr.dash_offset;
+        cached_images.reset(new cache_array);
+
+        return *this;
+    }
 };
 
 }}
