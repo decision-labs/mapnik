@@ -1,5 +1,21 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.14
+**Release date**: 2019-XX-XX
+
+Changes:
+ - Marker cache improvements
+    - Fix sample_idx calculation with negative values.
+    - Atomic handling
+    - Remove const cast and use mutable instead
+ - Update dependencies:
+    - libpq to 10.7 (was 9.6.2)
+    - jpeg_turbo to 1.5.2 (was 1.5.1)
+    - libpng to 1.6.37 (was 1.6.28)
+    - libtiff to 4.0.8 (was 4.0.7)
+    - sqlite to 3.21.0 (was 3.17.0)
+    - libgdal 2.4.1 (was 2.1.3)
+
 ## 3.0.15.13
 **Release date**: 2019-04-09
 
@@ -27,7 +43,7 @@ Changes:
 Changes:
  - Improve clip calculation to avoid issues when using offset.
  - Update to match upstream 3.0.22 (our release still is 3.0.15).
- - Test and build using Xenial and clang 5.0.0 (which was already teh default in mason)
+ - Test and build using Xenial and clang 5.0.0 (which was already the default in mason)
  - Switch to harfbuzz 1.4.4-ft (reverts the change in 3.0.15.3)
  - Backport compatibility patches (ICU, clang, boost).
 

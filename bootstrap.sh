@@ -11,7 +11,7 @@ todo
 - shrink icu data
 '
 
-MASON_VERSION="master"
+MASON_VERSION="libpq10"
 
 function setup_mason() {
     if [[ ! -d ./.mason ]]; then
@@ -50,11 +50,11 @@ BOOST_VERSION="1.65.1"
 function install_mason_deps() {
     install ccache 3.3.1
     install zlib 1.2.8
-    install jpeg_turbo 1.5.1 libjpeg
-    install libpng 1.6.28 libpng
-    install libtiff 4.0.7 libtiff
+    install jpeg_turbo 1.5.2 libjpeg
+    install libpng 1.6.37 libpng
+    install libtiff 4.0.8 libtiff
     install libpq 10.7
-    install sqlite 3.17.0 libsqlite3
+    install sqlite 3.21.0 libsqlite3
     install expat 2.2.0 libexpat
     install icu ${ICU_VERSION}
     install proj 4.9.3 libproj
@@ -64,7 +64,7 @@ function install_mason_deps() {
     # technically protobuf is not a mapnik core dep, but installing
     # here by default helps make mapnik-vector-tile builds easier
     install webp 0.6.0 libwebp
-    install libgdal 2.1.3 libgdal
+    install gdal 2.4.1 libgdal
     install boost ${BOOST_VERSION}
     install boost_libsystem ${BOOST_VERSION}
     install boost_libfilesystem ${BOOST_VERSION}
