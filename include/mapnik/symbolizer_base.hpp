@@ -148,42 +148,29 @@ struct MAPNIK_DECL markers_symbolizer : public symbolizer_base
 
     struct cache_status
     {
-        std::atomic<cache_status_enum> status;
+        std::atomic<cache_status_enum> status {cache_status_enum::UNCHECKED};
         cache_status()
-        {
-            status.store(cache_status_enum::UNCHECKED);
-        }
+        {}
 
         cache_status(const cache_status &o)
         {
-            status.store(o.status.load());
+            status.store(o.status.load(std::memory_order_relaxed), std::memory_order_relaxed);
         }
 
         cache_status(cache_status &&o)
         {
-            status.store(o.status.load());
+            status.store(o.status.load(std::memory_order_relaxed), std::memory_order_relaxed);
         }
 
         cache_status& operator=(const cache_status &o)
         {
-            status.store(o.status.load());
+            status.store(o.status.load(std::memory_order_relaxed), std::memory_order_relaxed);
             return *this;
         }
     };
 
-    cache_status_enum get_cache_state() const
-    {
-        return cacheable.status.load();
-    }
-
-    void set_cache_state(cache_status_enum s) const
-    {
-        cacheable.status.store(s);
-    }
-
     mutable std::shared_ptr<svg_attribute_type> cached_attributes = nullptr;
     mutable svg_path_ptr cached_ellipse = nullptr;
-private:
     mutable cache_status cacheable = cache_status();
 };
 

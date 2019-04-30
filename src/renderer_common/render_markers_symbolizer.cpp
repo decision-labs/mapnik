@@ -123,17 +123,19 @@ struct render_marker_symbolizer_visitor
     void operator() (marker_svg const& mark)
     {
         using namespace mapnik::svg;
-        if (sym_.get_cache_state() == markers_symbolizer::cache_status_enum::UNCHECKED)
+        if (sym_.cacheable.status.load(std::memory_order_relaxed))
         {
             if (std::all_of(sym_.properties.begin(), sym_.properties.end(),
                 [](symbolizer_base::cont_type::value_type const& key_prop)
                   { return !is_expression(key_prop.second);}))
             {
-                sym_.set_cache_state(markers_symbolizer::cache_status_enum::CACHEABLE);
+                sym_.cacheable.status.store(markers_symbolizer::cache_status_enum::CACHEABLE,
+                                            std::memory_order_relaxed);
             }
             else
             {
-                sym_.set_cache_state(markers_symbolizer::cache_status_enum::UNCACHEABLE);
+                sym_.cacheable.status.store(markers_symbolizer::cache_status_enum::UNCACHEABLE,
+                                            std::memory_order_relaxed);
             }
         }
 
@@ -148,11 +150,12 @@ struct render_marker_symbolizer_visitor
         std::shared_ptr<svg_attribute_type> r_attributes = nullptr;
 
         bool cacheable = !renderer_context_.symbolizer_caches_disabled_ &&
-                (sym_.get_cache_state() == markers_symbolizer::cache_status_enum::CACHEABLE);
+                (sym_.cacheable.status.load(std::memory_order_relaxed) ==
+                        markers_symbolizer::cache_status_enum::CACHEABLE);
 
         if (cacheable)
         {
-            r_attributes = std::atomic_load(&sym_.cached_attributes);
+            r_attributes = std::atomic_load_explicit(&sym_.cached_attributes, std::memory_order_relaxed);
         }
 
         if (r_attributes == nullptr)
@@ -161,7 +164,7 @@ struct render_marker_symbolizer_visitor
             svg_attribute_type s_attributes;
             r_attributes = std::make_shared<svg_attribute_type>(get_marker_attributes(*stock_vector_marker, s_attributes));
 
-            std::atomic_store(&sym_.cached_attributes, r_attributes);
+            std::atomic_store_explicit(&sym_.cached_attributes, r_attributes, std::memory_order_relaxed);
         }
 
         if (filename_ != "shape://ellipse" ||
@@ -175,7 +178,7 @@ struct render_marker_symbolizer_visitor
             // special case for simple ellipse markers to allow for full control over rx/ry dimensions
             // Ellipses are built procedurally. We do caching of the built ellipses, this is useful for rendering stages
 
-            marker_ptr = cacheable ? std::atomic_load(&sym_.cached_ellipse) : nullptr;
+            marker_ptr = cacheable ? std::atomic_load_explicit(&sym_.cached_ellipse, std::memory_order_relaxed) : nullptr;
             if (!marker_ptr)
             {
                 renderer_context_.metrics_.measure_add("Agg_PMS_EllipseCache_Miss");
@@ -184,7 +187,7 @@ struct render_marker_symbolizer_visitor
                 svg_path_adapter svg_path(stl_storage);
                 build_ellipse(sym_, feature_, common_.vars_, *marker_ptr, svg_path);
 
-                std::atomic_store(&sym_.cached_ellipse,  marker_ptr);
+                std::atomic_store_explicit(&sym_.cached_ellipse,  marker_ptr, std::memory_order_relaxed);
             }
         }
 

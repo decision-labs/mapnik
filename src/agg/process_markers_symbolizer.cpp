@@ -117,7 +117,7 @@ struct agg_markers_renderer_context : markers_renderer_context
                 std::shared_ptr<image_rgba8> stroke_img = nullptr;
 
                 path_attributes::cache_line & cl = (*attrs[0].cached_images)[sample_idx];
-                if (cl.set)
+                if (cl.set.load(std::memory_order_acquire))
                 {
                     fill_img = cl.fill_img;
                     stroke_img = cl.stroke_img;
@@ -185,9 +185,9 @@ struct agg_markers_renderer_context : markers_renderer_context
                     ras_.clip_box(0, 0, pixf_.width(), pixf_.height());
 
                     // Update cache with the new images
-                    std::atomic_store(&cl.fill_img, fill_img);
-                    std::atomic_store(&cl.stroke_img, stroke_img);
-                    cl.set.store(true);
+                    std::atomic_exchange_explicit(&cl.fill_img, fill_img, std::memory_order_relaxed);
+                    std::atomic_exchange_explicit(&cl.stroke_img, stroke_img, std::memory_order_relaxed);
+                    cl.set.store(true, std::memory_order_release);
                 }
 
                 // Set up blitting transformation. We will add a small offset due to sampling
