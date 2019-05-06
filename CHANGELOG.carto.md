@@ -1,13 +1,15 @@
 # CARTO Mapnik Changelog
 
 ## 3.0.15.14
-**Release date**: 2019-XX-XX
+
+**Release date**: 2019-05-06
 
 Changes:
  - Marker cache improvements
     - Fix sample_idx calculation with negative values.
-    - Atomic handling
-    - Remove const cast and use mutable instead
+    - Use atomics to handle the cache (multithreading).
+    - Remove const cast and use mutable members instead.
+
  - Update dependencies:
     - libpq to 10.7 (was 9.6.2)
     - jpeg_turbo to 1.5.2 (was 1.5.1)
@@ -19,12 +21,14 @@ Changes:
     - zlib to 1.2.11 (was 1.2.8)
 
 ## 3.0.15.13
+
 **Release date**: 2019-04-09
 
 Changes:
  - Avoid heap-buffer-overflow in agg::rasterizer_cells_aa<Cell>::sort_cells.
 
 ## 3.0.15.12
+
 **Release date**: 2019-04-08
 
 Changes:
@@ -32,6 +36,7 @@ Changes:
  - Some other compiler warnings addressed.
 
 ## 3.0.15.11
+
 **Release date**: 2019-04-05
 
 Changes:
@@ -40,6 +45,7 @@ Changes:
  - Fix UB in deps/agg. Sent upstream.
 
 ## 3.0.15.10
+
 **Release date**: 2019-03-29
 
 Changes:
@@ -51,6 +57,7 @@ Changes:
 
 
 ## 3.0.15.9
+
 **Release date**: 2018-05-14
 
 Changes:
