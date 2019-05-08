@@ -144,11 +144,34 @@ struct MAPNIK_DECL polygon_pattern_symbolizer : public symbolizer_base {};
 //Marker symbolizer with cached attributes
 struct MAPNIK_DECL markers_symbolizer : public symbolizer_base
 {
-    enum cache_status { UNCHECKED, UNCACHEABLE, CACHEABLE };
+    enum cache_status_enum : uint8_t { UNCHECKED, UNCACHEABLE, CACHEABLE };
 
-    std::shared_ptr<svg_attribute_type> cached_attributes = nullptr;
-    svg_path_ptr cached_ellipse = nullptr;
-    cache_status cacheable = UNCHECKED;
+    struct cache_status
+    {
+        std::atomic<cache_status_enum> status {cache_status_enum::UNCHECKED};
+        cache_status()
+        {}
+
+        cache_status(const cache_status &o)
+        {
+            status.store(o.status.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+
+        cache_status(cache_status &&o)
+        {
+            status.store(o.status.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
+
+        cache_status& operator=(const cache_status &o)
+        {
+            status.store(o.status.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            return *this;
+        }
+    };
+
+    mutable std::shared_ptr<svg_attribute_type> cached_attributes = nullptr;
+    mutable svg_path_ptr cached_ellipse = nullptr;
+    mutable cache_status cacheable = cache_status();
 };
 
 struct MAPNIK_DECL raster_symbolizer : public symbolizer_base {};
