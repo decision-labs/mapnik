@@ -10,7 +10,7 @@ Changes:
     - Use atomics to handle the cache (multithreading).
     - Remove const cast and use mutable members instead.
 
- - Fix a change in behaviour introduced in 3.0.15.12 where negative values left shifted changed value. As `<<` is undefined for ints, it was changed for an equivalent division but the `agg` library relied on a certain behaviour (e.g. `(-2 << 256) == -1`).
+ - Fix a change in behaviour introduced in 3.0.15.12 where negative values left shifted changed value. As `<<` is undefined for negative ints, it was changed for an equivalent division but the `agg` library relied on a certain behaviour (e.g. `(-2 << 256) == -1`).
 
  - Update dependencies:
     - libpq to 10.7 (was 9.6.2)
