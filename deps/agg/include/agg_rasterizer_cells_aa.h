@@ -334,10 +334,10 @@ namespace agg
         }
 
         int dy = agg::iround(static_cast<double>(y2) - static_cast<double>(y1));
-        int ex1 = x1 / poly_subpixel_scale;
-        int ex2 = x2 / poly_subpixel_scale;
-        int ey1 = y1 / poly_subpixel_scale;
-        int ey2 = y2 / poly_subpixel_scale;
+        int ex1 = poly_subpixel_subscale(x1);
+        int ex2 = poly_subpixel_subscale(x2);
+        int ey1 = poly_subpixel_subscale(y1);
+        int ey2 = poly_subpixel_subscale(y2);
         int fy1 = y1 & poly_subpixel_mask;
         int fy2 = y2 & poly_subpixel_mask;
 
@@ -369,7 +369,7 @@ namespace agg
         incr  = 1;
         if(dx == 0)
         {
-            int ex = x1 / poly_subpixel_scale;
+            int ex = poly_subpixel_subscale(x1);
             int two_fx = (x1 - (ex * poly_subpixel_scale)) * 2;
             int area;
 
@@ -432,7 +432,7 @@ namespace agg
         render_hline(ey1, x1, fy1, x_from, first);
 
         ey1 += incr;
-        set_curr_cell(x_from / poly_subpixel_scale, ey1);
+        set_curr_cell(poly_subpixel_subscale(x_from), ey1);
 
         if(ey1 != ey2)
         {
@@ -462,7 +462,7 @@ namespace agg
                 x_from = x_to;
 
                 ey1 += incr;
-                set_curr_cell(x_from / poly_subpixel_scale, ey1);
+                set_curr_cell(poly_subpixel_subscale(x_from), ey1);
             }
         }
         render_hline(ey1, x_from, poly_subpixel_scale - first, x2, fy2);
