@@ -108,14 +108,14 @@ SECTION("test pj_transform failure behavior")
     CHECK( std::isinf(y3) );
 
     // cleanup
-    pj_ctx_free(proj_ctx0);
-    proj_ctx0 = nullptr;
     pj_free(proj0);
     proj0 = nullptr;
-    pj_ctx_free(proj_ctx1);
-    proj_ctx1 = nullptr;
+    pj_ctx_free(proj_ctx0);
+    proj_ctx0 = nullptr;
     pj_free(proj1);
     proj1 = nullptr;
+    pj_ctx_free(proj_ctx1);
+    proj_ctx1 = nullptr;
 }
 
 #endif
