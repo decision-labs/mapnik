@@ -12,6 +12,8 @@ Changes:
 
  - Fix a change in behaviour introduced in 3.0.15.12 where negative values left shifted changed value. As `<<` is undefined for negative ints, it was changed for an equivalent division but the `agg` library relied on a certain behaviour (e.g. `(-2 << 256) == -1`).
 
+ - Postgis plugin connection manager: Thread safety and remove password from the id from upstream.
+
  - Update dependencies:
     - libpq to 10.7 (was 9.6.2)
     - jpeg_turbo to 1.5.2 (was 1.5.1)
