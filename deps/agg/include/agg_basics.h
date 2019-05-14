@@ -188,10 +188,11 @@ namespace agg
         poly_subpixel_mask  = poly_subpixel_scale-1  //----poly_subpixel_mask
     };
 
-    AGG_INLINE int poly_subpixel_subscale(int v)
+    AGG_INLINE int poly_subpixel_subscale(int _v)
     {
-        return (v >= 0 ?
-            v >> poly_subpixel_shift :
+        long int v = _v;
+        return (_v >= 0 ?
+            _v >> poly_subpixel_shift :
             ((v - poly_subpixel_mask) / poly_subpixel_scale)
             );
     }
