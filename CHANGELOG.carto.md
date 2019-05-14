@@ -2,7 +2,7 @@
 
 ## 3.0.15.14
 
-**Release date**: 2019-05-10
+**Release date**: 2019-05-14
 
 Changes:
  - Marker cache improvements
