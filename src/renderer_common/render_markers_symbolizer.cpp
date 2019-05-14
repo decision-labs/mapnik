@@ -28,6 +28,7 @@
 #include <mapnik/renderer_common/render_markers_symbolizer.hpp>
 #include <mapnik/symbolizer.hpp>
 
+#include <atomic>
 #include <memory>
 
 namespace mapnik {
