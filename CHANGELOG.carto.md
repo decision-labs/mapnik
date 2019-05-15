@@ -1,5 +1,12 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.15
+
+**Release date**: 2019-05-15
+
+Changes:
+ - Avoid undefined behaviour in poly_subpixel_subscale.
+
 ## 3.0.15.14
 
 **Release date**: 2019-05-14
