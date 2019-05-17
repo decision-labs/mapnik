@@ -124,7 +124,8 @@ struct render_marker_symbolizer_visitor
     void operator() (marker_svg const& mark)
     {
         using namespace mapnik::svg;
-        if (sym_.cacheable.status.load(std::memory_order_relaxed))
+        if (sym_.cacheable.status.load(std::memory_order_relaxed)
+                == markers_symbolizer::cache_status_enum::UNCHECKED)
         {
             if (std::all_of(sym_.properties.begin(), sym_.properties.end(),
                 [](symbolizer_base::cont_type::value_type const& key_prop)
