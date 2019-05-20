@@ -1,5 +1,12 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.16
+
+**Release date**: 2019-05-20
+
+Changes:
+ - Fix a bug that broke marker's cache (3.0.15.15).
+
 ## 3.0.15.15
 
 **Release date**: 2019-05-15
