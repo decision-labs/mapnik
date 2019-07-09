@@ -1,5 +1,12 @@
 # CARTO Mapnik Changelog
 
+## 3.0.15.17
+
+**Release date**: 2019-07-09
+
+Changes:
+ - Improve precision when outputting variables into Postgis plugin SQL queries.
+
 ## 3.0.15.16
 
 **Release date**: 2019-05-20
