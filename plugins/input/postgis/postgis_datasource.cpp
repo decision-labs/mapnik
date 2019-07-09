@@ -544,6 +544,7 @@ std::string postgis_datasource::populate_tokens(
                                 bool intersect) const
 {
     std::ostringstream populated_sql;
+    populated_sql.precision(12); // Increase precision tro avoid issues with floating point values
     std::cmatch m;
     char const* start = sql.data();
     char const* end = start + sql.size();
