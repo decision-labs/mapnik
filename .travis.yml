@@ -15,8 +15,7 @@ cache:
   directories:
   - $HOME/.ccache
 
-dist: trusty
-sudo: false
+dist: xenial
 
 matrix:
   include:
@@ -48,7 +47,7 @@ matrix:
           sources: [ 'ubuntu-toolchain-r-test' ]
           packages: [ 'clang-3.9', 'llvm-3.9', 'libstdc++-4.9-dev', 'xutils-dev', 'postgresql-9.4-postgis-2.3' ]
     - os: osx
-      name: OSX clang
+      compiler: ": clang-osx"
       # https://docs.travis-ci.com/user/languages/objective-c/#Supported-OS-X-iOS-SDK-versions
       osx_image: xcode7.3 # upgrades clang from 6 -> 7
       env: >-
@@ -62,22 +61,40 @@ install:
  - export PATH=${PREFIX}/bin:$(pwd)/mason_packages/.link/bin:${PATH}
  - export COVERAGE=${COVERAGE:-false}
  - export BENCH=${BENCH:-false}
+ - export ENABLE_GLIBC_WORKAROUND=${ENABLE_GLIBC_WORKAROUND:-false}
+ - git_submodule_update --init
  - on 'osx' export DATA_PATH=$(brew --prefix)/var/postgres
  - on 'osx' rm -rf ${DATA_PATH}
  - on 'osx' initdb ${DATA_PATH} -E utf8
  - on 'osx' pg_ctl -w start -l postgres.log --pgdata ${DATA_PATH};
  - on 'osx' cat postgres.log;
  - on 'osx' createuser -s postgres
+ - on 'linux' sudo service postgresql stop;
+ - on 'linux' sudo apt-get remove postgresql* -y
+ - on 'linux' sudo apt-get install -y --allow-unauthenticated --no-install-recommends --no-install-suggests postgresql-10 postgresql-client-10 postgresql-server-dev-10 postgresql-common postgresql-10-postgis-2.5 postgresql-10-postgis-2.5-scripts postgis
+ - on 'linux' sudo pg_dropcluster --stop 10 main  && sudo rm -rf /etc/postgresql/10 /var/lib/postgresql/10
+ - on 'linux' sudo pg_createcluster -u postgres 10 main -- -A trust
+ - on 'linux' sudo /etc/init.d/postgresql start 10
  - psql -c 'create database template_postgis;' -U postgres
  - psql -c 'create extension postgis;' -d template_postgis -U postgres
  - enabled ${COVERAGE} curl -S -f https://codecov.io/bash -o codecov
  - enabled ${COVERAGE} chmod +x codecov
+ - export PGUSER=postgres
 
 before_script:
  - export JOBS=${JOBS:-4}
  - export HEAVY_JOBS=${HEAVY_JOBS:-2}
  - export SCONSFLAGS='--debug=time'
  - source bootstrap.sh
+ - |
+   if [[ $(uname -s) == 'Linux' ]]; then
+     mason install clang++ 5.0.0
+     export PATH=$(mason prefix clang++ 5.0.0)/bin:${PATH}
+     mason install llvm-cov 5.0.0
+     export PATH=$(mason prefix llvm-cov 5.0.0)/bin:${PATH}
+     which llvm-cov
+     export LLVM_COV="$(mason prefix llvm-cov 5.0.0)/bin/llvm-cov"
+   fi
  - ccache --version
  - ccache -p || true
  - ccache --show-stats || true
@@ -91,10 +108,9 @@ script:
  # to ensure that slow builds still upload their
  # ccache results and therefore should be faster
  # (and might work) for the next build
- - DEADLINE=$(( $(date +%s) + 40 * 60 ))
- - scripts/travis-command-wrapper.py -s "date" -i 120 --deadline="$DEADLINE" make
- - test_ok && git_submodule_update --init test/
- - test_ok && make test
- - test_ok && enabled ${COVERAGE} coverage
- - test_ok && enabled ${BENCH} make bench
+ - DURATION=2400
+ - scripts/travis-command-wrapper.py -s "date" -i 120 --deadline=$(( $(date +%s) + ${DURATION} )) make
+ - make test
+ - enabled ${COVERAGE} coverage
+ - enabled ${BENCH} make bench
  - ./scripts/check_glibcxx.sh

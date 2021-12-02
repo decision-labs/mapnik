@@ -266,6 +266,7 @@ source = Split(
     renderer_common/pattern_alignment.cpp
     math.cpp
     value.cpp
+    metrics.cpp
     """
     )
 

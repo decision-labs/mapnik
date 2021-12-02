@@ -33,7 +33,10 @@ inline boost::optional<std::string> type_from_bytes(char const* data, size_t siz
     using result_type = boost::optional<std::string>;
     if (size >= 4)
     {
-        unsigned int magic = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+        uint32_t magic = (static_cast<uint32_t>(data[0]) << 24) |
+                         (static_cast<uint32_t>(data[1]) << 16) |
+                         (static_cast<uint32_t>(data[2]) << 8) |
+                          data[3];
         if (magic == 0x89504E47U)
         {
             return result_type("png");
@@ -45,7 +48,9 @@ inline boost::optional<std::string> type_from_bytes(char const* data, size_t siz
     }
     if (size>=2)
     {
-        unsigned int magic = ((data[0] << 8) | data[1]) & 0xffff;
+        unsigned int magic = ((static_cast<uint32_t>(data[0]) << 8) |
+                               static_cast<uint32_t>(data[1])) &
+                             0xffff;
         if (magic == 0xffd8)
         {
             return result_type("jpeg");

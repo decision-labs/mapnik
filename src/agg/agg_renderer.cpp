@@ -70,7 +70,7 @@ namespace mapnik
 
 template <typename T0, typename T1>
 agg_renderer<T0,T1>::agg_renderer(Map const& m, T0 & pixmap, double scale_factor, unsigned offset_x, unsigned offset_y)
-    : feature_style_processor<agg_renderer>(m, scale_factor),
+    : feature_style_processor<agg_renderer>(m, scale_factor, pixmap.metrics_),
       pixmap_(pixmap),
       internal_buffer_(),
       current_buffer_(&pixmap),
@@ -85,7 +85,7 @@ agg_renderer<T0,T1>::agg_renderer(Map const& m, T0 & pixmap, double scale_factor
 
 template <typename T0, typename T1>
 agg_renderer<T0,T1>::agg_renderer(Map const& m, request const& req, attributes const& vars, T0 & pixmap, double scale_factor, unsigned offset_x, unsigned offset_y)
-    : feature_style_processor<agg_renderer>(m, scale_factor),
+    : feature_style_processor<agg_renderer>(m, scale_factor, pixmap.metrics_),
       pixmap_(pixmap),
       internal_buffer_(),
       current_buffer_(&pixmap),
@@ -101,7 +101,7 @@ agg_renderer<T0,T1>::agg_renderer(Map const& m, request const& req, attributes c
 template <typename T0, typename T1>
 agg_renderer<T0,T1>::agg_renderer(Map const& m, T0 & pixmap, std::shared_ptr<T1> detector,
                               double scale_factor, unsigned offset_x, unsigned offset_y)
-    : feature_style_processor<agg_renderer>(m, scale_factor),
+    : feature_style_processor<agg_renderer>(m, scale_factor, pixmap.metrics_),
       pixmap_(pixmap),
       internal_buffer_(),
       current_buffer_(&pixmap),
@@ -188,6 +188,10 @@ void agg_renderer<T0,T1>::setup(Map const &m)
                                      m.background_image_opacity());
         util::apply_visitor(visitor, *bg_marker);
     }
+
+    auto const & params = m.get_extra_parameters();
+    markers_symbolizer_caches_disabled_ = (params.get<bool>("markers_symbolizer_caches_disabled") == true);
+
     MAPNIK_LOG_DEBUG(agg_renderer) << "agg_renderer: Scale=" << m.scale();
 }
 
@@ -377,7 +381,6 @@ struct agg_render_marker_visitor
         using pixfmt_comp_type = agg::pixfmt_custom_blend_rgba<blender_type, agg::rendering_buffer>;
         using renderer_base = agg::renderer_base<pixfmt_comp_type>;
         using renderer_type = agg::renderer_scanline_aa_solid<renderer_base>;
-        using svg_attribute_type = agg::pod_bvector<mapnik::svg::path_attributes>;
 
         ras_ptr_->reset();
         if (gamma_method_ != GAMMA_POWER || gamma_ != 1.0)

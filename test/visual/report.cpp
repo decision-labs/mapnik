@@ -104,7 +104,7 @@ unsigned console_report::summary(result_list const & results)
     report_failures(results);
     s << std::endl;
 
-    return fail + error;
+    return fail + error + overwrite;
 }
 
 void console_report::report_state(result const & r)

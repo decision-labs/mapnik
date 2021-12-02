@@ -78,8 +78,10 @@ struct grid_markers_renderer_context : markers_renderer_context
     grid_markers_renderer_context(feature_impl const& feature,
                                   BufferType & buf,
                                   RasterizerType & ras,
-                                  PixMapType & pixmap)
-      : feature_(feature),
+                                  PixMapType & pixmap,
+                                  metrics & m)
+      : markers_renderer_context(m),
+        feature_(feature),
         buf_(buf),
         pixf_(buf_),
         renb_(pixf_),
@@ -90,7 +92,7 @@ struct grid_markers_renderer_context : markers_renderer_context
 
     virtual void render_marker(svg_path_ptr const& src,
                                svg_path_adapter & path,
-                               svg_attribute_type const& attrs,
+                               svg_attribute_type & attrs,
                                markers_dispatch_params const& params,
                                agg::trans_affine const& marker_tr)
     {
@@ -138,6 +140,7 @@ void grid_renderer<T>::process(markers_symbolizer const& sym,
                                mapnik::feature_impl & feature,
                                proj_transform const& prj_trans)
 {
+    METRIC_UNUSED auto t = this->metrics_.measure_time("Grid_PMarkerS");
     using buf_type = grid_rendering_buffer;
     using pixfmt_type = typename grid_renderer_base_type::pixfmt_type;
     using renderer_type = agg::renderer_scanline_bin_solid<grid_renderer_base_type>;
@@ -157,7 +160,7 @@ void grid_renderer<T>::process(markers_symbolizer const& sym,
                                                                     buf_type,
                                                                     grid_rasterizer,
                                                                     buffer_type>;
-    grid_context_type renderer_context(feature, render_buf, *ras_ptr, pixmap_);
+    grid_context_type renderer_context(feature, render_buf, *ras_ptr, pixmap_, this->metrics_);
 
     render_markers_symbolizer(
         sym, feature, prj_trans, common_, clip_box, renderer_context);
