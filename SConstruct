@@ -1811,11 +1811,9 @@ if not preconfigured:
                         env['QUERIED_ICU_DATA'])
             env['MISSING_DEPS'].append('ICU_DATA')
 
-<< << << < HEAD
-== == == =
 
->>>>>> > v3.0.15-carto
-   if len(env['REQUESTED_PLUGINS']):
+
+    if len(env['REQUESTED_PLUGINS']):
         if env['HOST']:
             for plugin in env['REQUESTED_PLUGINS']:
                 details = env['PLUGINS'][plugin]
