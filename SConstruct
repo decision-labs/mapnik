@@ -42,7 +42,7 @@ ICU_LIBS_DEFAULT='/usr/'
 
 DEFAULT_CC = "cc"
 DEFAULT_CXX = "c++"
-DEFAULT_CXX11_CXXFLAGS = " -std=c++11"
+DEFAULT_CXX11_CXXFLAGS = " -std=c++11 -DU_USING_ICU_NAMESPACE=0"
 DEFAULT_CXX11_LINKFLAGS = ""
 if sys.platform == 'darwin':
     # homebrew default
@@ -390,6 +390,7 @@ opts.AddVariables(
     # Variables for logging and statistics
     BoolVariable('ENABLE_LOG', 'Enable logging, which is enabled by default when building in *debug*', 'False'),
     BoolVariable('ENABLE_STATS', 'Enable global statistics during map processing', 'False'),
+    BoolVariable('ENABLE_METRICS', 'Enable internal metrics during map processing', 'True'),
     ('DEFAULT_LOG_SEVERITY', 'The default severity of the logger (eg. ' + ', '.join(severities) + ')', 'error'),
 
     # Plugin linking
@@ -830,9 +831,16 @@ int main() {
         context.did_show_result=1
     if ret[0]:
         context.Result('u_getDataDirectory returned %s' % ret[1])
+        return ret[1].strip()
     else:
-        context.Result('Failed to detect (mapnik-config will have null value)')
-    return ret[1].strip()
+        ret = call("icu-config --icudatadir", silent=True)
+        if ret:
+            context.Result('icu-config returned %s' % ret)
+            return ret
+        else:
+            context.Result('Failed to detect (mapnik-config will have null value)')
+            return ''
+
 
 def CheckGdalData(context, silent=False):
 
@@ -866,6 +874,7 @@ def CheckProjData(context, silent=False):
 // This is narly, could eventually be replaced using https://github.com/OSGeo/proj.4/pull/551]
 #include <proj_api.h>
 #include <iostream>
+#include <cstring>
 
 static void my_proj4_logger(void * user_data, int /*level*/, const char * msg)
 {
@@ -1076,12 +1085,11 @@ int main()
     return False
 
 def boost_regex_has_icu(context):
-    if env['RUNTIME_LINK'] == 'static':
-        # re-order icu libs to ensure linux linker is happy
-        for lib_name in ['icui18n',env['ICU_LIB_NAME'],'icudata']:
-            if lib_name in context.env['LIBS']:
-                context.env['LIBS'].remove(lib_name)
-            context.env.Append(LIBS=lib_name)
+    # re-order icu libs to ensure linux linker is happy
+    for lib_name in ['icui18n',env['ICU_LIB_NAME'],'icudata']:
+        if lib_name in context.env['LIBS']:
+            context.env['LIBS'].remove(lib_name)
+        context.env['LIBS'].append(lib_name)
     ret = context.TryRun("""
 
 #include <boost/regex/icu.hpp>
@@ -1385,6 +1393,7 @@ if not preconfigured:
         ['harfbuzz', 'harfbuzz/hb.h',True,'C++']
     ]
 
+    CHECK_PKG_CONFIG = conf.CheckPKGConfig('0.15.0')
     if env.get('FREETYPE_LIBS') or env.get('FREETYPE_INCLUDES'):
         REQUIRED_LIBSHEADERS.insert(0,['freetype','ft2build.h',True,'C'])
         if env.get('FREETYPE_INCLUDES'):
@@ -1393,6 +1402,21 @@ if not preconfigured:
         if env.get('FREETYPE_LIBS'):
             lib_path = env['FREETYPE_LIBS']
             env.AppendUnique(LIBPATH = fix_path(lib_path))
+    elif CHECK_PKG_CONFIG and conf.CheckPKG('freetype2'):
+        # Freetype 2.9+ doesn't use freetype-config and uses pkg-config instead
+        cmd = 'pkg-config freetype2 --libs --cflags'
+        if env['RUNTIME_LINK'] == 'static':
+            cmd += ' --static'
+
+        temp_env = Environment(ENV=os.environ)
+        try:
+            temp_env.ParseConfig(cmd)
+            for lib in temp_env['LIBS']:
+                env.AppendUnique(LIBPATH = fix_path(lib))
+            for inc in temp_env['CPPPATH']:
+                env.AppendUnique(CPPPATH = fix_path(inc))
+        except OSError as e:
+            pass
     elif conf.parse_config('FREETYPE_CONFIG'):
         # check if freetype links to bz2
         if env['RUNTIME_LINK'] == 'static':
@@ -1626,8 +1650,6 @@ if not preconfigured:
             color_print(1,'%s not detected on your system' % env['QUERIED_ICU_DATA'] )
             env['MISSING_DEPS'].append('ICU_DATA')
 
-
-    CHECK_PKG_CONFIG = conf.CheckPKGConfig('0.15.0')
 
     if len(env['REQUESTED_PLUGINS']):
         if env['HOST']:
@@ -1922,6 +1944,10 @@ if not preconfigured:
         if env['ENABLE_STATS']:
             debug_defines.append('-DMAPNIK_STATS')
             ndebug_defines.append('-DMAPNIK_STATS')
+
+        # Enable metrics
+        if env['ENABLE_METRICS']:
+            env.Append(CPPDEFINES = '-DMAPNIK_METRICS')
 
         # Add rdynamic to allow using statics between application and plugins
         # http://stackoverflow.com/questions/8623657/multiple-instances-of-singleton-across-shared-libraries-on-linux

@@ -62,7 +62,7 @@ namespace mapnik
 
 template <typename T>
 grid_renderer<T>::grid_renderer(Map const& m, T & pixmap, double scale_factor, unsigned offset_x, unsigned offset_y)
-    : feature_style_processor<grid_renderer>(m, scale_factor),
+    : feature_style_processor<grid_renderer>(m, scale_factor, pixmap.metrics_),
       pixmap_(pixmap),
       ras_ptr(new grid_rasterizer),
       common_(m, attributes(), offset_x, offset_y, m.width(), m.height(), scale_factor)
@@ -72,7 +72,7 @@ grid_renderer<T>::grid_renderer(Map const& m, T & pixmap, double scale_factor, u
 
 template <typename T>
 grid_renderer<T>::grid_renderer(Map const& m, request const& req, attributes const& vars, T & pixmap, double scale_factor, unsigned offset_x, unsigned offset_y)
-    : feature_style_processor<grid_renderer>(m, scale_factor),
+    : feature_style_processor<grid_renderer>(m, scale_factor, pixmap.metrics_),
       pixmap_(pixmap),
       ras_ptr(new grid_rasterizer),
       common_(m, req, vars, offset_x, offset_y, req.width(), req.height(), scale_factor)
@@ -176,10 +176,9 @@ struct grid_render_marker_visitor
         vertex_stl_adapter<svg_path_storage> stl_storage(marker.get_data()->source());
         svg_path_adapter svg_path(stl_storage);
         svg_renderer_agg<svg_path_adapter,
-            agg::pod_bvector<path_attributes>,
+            svg_attribute_type,
             renderer_type,
-            pixfmt_type> svg_renderer(svg_path,
-                                                marker.get_data()->attributes());
+            pixfmt_type> svg_renderer(svg_path, marker.get_data()->attributes());
 
         svg_renderer.render_id(*ras_ptr_, sl, renb, feature_.id(), mtx, opacity_, bbox);
     }

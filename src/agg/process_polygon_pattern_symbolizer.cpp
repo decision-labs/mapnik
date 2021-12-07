@@ -26,19 +26,18 @@
 #include <mapnik/agg_renderer.hpp>
 #include <mapnik/agg_helpers.hpp>
 #include <mapnik/agg_rasterizer.hpp>
+#include <mapnik/agg/render_polygon_pattern.hpp>
 #include <mapnik/marker.hpp>
 #include <mapnik/marker_cache.hpp>
 #include <mapnik/vertex_converters.hpp>
 #include <mapnik/vertex_processor.hpp>
 #include <mapnik/parse_path.hpp>
+#include <mapnik/safe_cast.hpp>
 #include <mapnik/symbolizer.hpp>
 #include <mapnik/svg/svg_converter.hpp>
 #include <mapnik/svg/svg_renderer_agg.hpp>
 #include <mapnik/svg/svg_path_adapter.hpp>
-#include <mapnik/renderer_common/clipping_extent.hpp>
 #include <mapnik/renderer_common/render_pattern.hpp>
-#include <mapnik/renderer_common/apply_vertex_converter.hpp>
-#include <mapnik/renderer_common/pattern_alignment.hpp>
 
 #pragma GCC diagnostic push
 #include <mapnik/warning_ignore_agg.hpp>
@@ -86,8 +85,9 @@ struct agg_renderer_process_visitor_p
         auto image_transform = get_optional<transform_type>(sym_, keys::image_transform);
         if (image_transform) evaluate_transform(image_tr, feature_, common_.vars_, *image_transform, common_.scale_factor_);
         mapnik::box2d<double> const& bbox_image = marker.get_data()->bounding_box() * image_tr;
-        mapnik::image_rgba8 image(bbox_image.width(), bbox_image.height());
-        render_pattern<buffer_type>(*ras_ptr_, marker, image_tr, 1.0, image);
+        using pixel_type = mapnik::image_rgba8::pixel::type;
+        mapnik::image_rgba8 image(safe_cast<pixel_type>(bbox_image.width()), safe_cast<pixel_type>(bbox_image.height()));
+        render_pattern<buffer_type>(marker, image_tr, 1.0, image);
         render(image);
     }
 
@@ -111,86 +111,30 @@ private:
             gamma_ = gamma;
         }
 
-        value_bool clip = get<value_bool, keys::clip>(sym_, feature_, common_.vars_);
-        value_double opacity = get<double, keys::opacity>(sym_, feature_, common_.vars_);
-        value_double simplify_tolerance = get<value_double, keys::simplify_tolerance>(sym_, feature_, common_.vars_);
-        value_double smooth = get<value_double, keys::smooth>(sym_, feature_, common_.vars_);
-
-        box2d<double> clip_box = clipping_extent(common_);
-
-        using color = agg::rgba8;
-        using order = agg::order_rgba;
-        using blender_type = agg::comp_op_adaptor_rgba_pre<color, order>;
-        using pixfmt_type = agg::pixfmt_custom_blend_rgba<blender_type, agg::rendering_buffer>;
-
-        using wrap_x_type = agg::wrap_mode_repeat;
-        using wrap_y_type = agg::wrap_mode_repeat;
-        using img_source_type = agg::image_accessor_wrap<agg::pixfmt_rgba32_pre,
-                                                         wrap_x_type,
-                                                         wrap_y_type>;
-
-        using span_gen_type = agg::span_pattern_rgba<img_source_type>;
-        using ren_base = agg::renderer_base<pixfmt_type>;
-
-        using renderer_type = agg::renderer_scanline_aa_alpha<ren_base,
-                                                              agg::span_allocator<agg::rgba8>,
-                                                              span_gen_type>;
-
-        pixfmt_type pixf(buf);
-        pixf.comp_op(static_cast<agg::comp_op_e>(get<composite_mode_e, keys::comp_op>(sym_, feature_, common_.vars_)));
-        ren_base renb(pixf);
-
-        unsigned w = image.width();
-        unsigned h = image.height();
-        agg::rendering_buffer pattern_rbuf((agg::int8u*)image.bytes(),w,h,w*4);
-        agg::pixfmt_rgba32_pre pixf_pattern(pattern_rbuf);
-        img_source_type img_src(pixf_pattern);
-
-        pattern_alignment_enum alignment = get<pattern_alignment_enum, keys::alignment>(sym_, feature_, common_.vars_);
-        unsigned offset_x=0;
-        unsigned offset_y=0;
-
-        if (alignment == LOCAL_ALIGNMENT)
-        {
-            double x0 = 0;
-            double y0 = 0;
-            using apply_local_alignment = detail::apply_local_alignment;
-            apply_local_alignment apply(common_.t_,prj_trans_, clip_box, x0, y0);
-            util::apply_visitor(geometry::vertex_processor<apply_local_alignment>(apply), feature_.get_geometry());
-
-            offset_x = unsigned(current_buffer_->width() - x0);
-            offset_y = unsigned(current_buffer_->height() - y0);
-        }
-
-        span_gen_type sg(img_src, offset_x, offset_y);
-
-        agg::span_allocator<agg::rgba8> sa;
-        renderer_type rp(renb,sa, sg, unsigned(opacity * 255));
-
-        agg::trans_affine tr;
-        auto transform = get_optional<transform_type>(sym_, keys::geometry_transform);
-        if (transform) evaluate_transform(tr, feature_, common_.vars_, *transform, common_.scale_factor_);
         using vertex_converter_type = vertex_converter<clip_poly_tag,
                                                        transform_tag,
                                                        affine_transform_tag,
                                                        simplify_tag,
                                                        smooth_tag>;
+        using pattern_type = agg_polygon_pattern<vertex_converter_type>;
 
-        vertex_converter_type converter(clip_box, sym_,common_.t_,prj_trans_,tr,feature_,common_.vars_,common_.scale_factor_);
+        pattern_type pattern(image, common_, sym_, feature_, prj_trans_);
 
-        if (prj_trans_.equal() && clip) converter.set<clip_poly_tag>();
-        converter.set<transform_tag>(); //always transform
-        converter.set<affine_transform_tag>(); // optional affine transform
-        if (simplify_tolerance > 0.0) converter.set<simplify_tag>(); // optional simplify converter
-        if (smooth > 0.0) converter.set<smooth_tag>(); // optional smooth converter
+        pattern_type::pixfmt_type pixf(buf);
+        pixf.comp_op(static_cast<agg::comp_op_e>(get<composite_mode_e, keys::comp_op>(sym_, feature_, common_.vars_)));
+        pattern_type::renderer_base renb(pixf);
 
-        using apply_vertex_converter_type = detail::apply_vertex_converter<vertex_converter_type, rasterizer>;
-        using vertex_processor_type = geometry::vertex_processor<apply_vertex_converter_type>;
-        apply_vertex_converter_type apply(converter, *ras_ptr_);
-        mapnik::util::apply_visitor(vertex_processor_type(apply),feature_.get_geometry());
-        agg::scanline_u8 sl;
+        unsigned w = image.width();
+        unsigned h = image.height();
+        agg::rendering_buffer pattern_rbuf((agg::int8u*)image.bytes(),w,h,w*4);
+        agg::pixfmt_rgba32_pre pixf_pattern(pattern_rbuf);
+        pattern_type::img_source_type img_src(pixf_pattern);
+
+        if (prj_trans_.equal() && pattern.clip_) pattern.converter_.set<clip_poly_tag>();
+
         ras_ptr_->filling_rule(agg::fill_even_odd);
-        agg::render_scanlines(*ras_ptr_, sl, rp);
+
+        pattern.render(renb, *ras_ptr_);
     }
 
     renderer_common & common_;
@@ -208,6 +152,7 @@ void agg_renderer<T0,T1>::process(polygon_pattern_symbolizer const& sym,
                                   mapnik::feature_impl & feature,
                                   proj_transform const& prj_trans)
 {
+    METRIC_UNUSED auto t = agg_renderer::metrics_.measure_time("Agg_PPolygonPatternS");
     std::string filename = get<std::string, keys::file>(sym, feature, common_.vars_);
     if (filename.empty()) return;
     std::shared_ptr<mapnik::marker const> marker = marker_cache::instance().find(filename, true);
@@ -220,7 +165,6 @@ void agg_renderer<T0,T1>::process(polygon_pattern_symbolizer const& sym,
                                                         feature,
                                                         prj_trans);
     util::apply_visitor(visitor, *marker);
-
 }
 
 

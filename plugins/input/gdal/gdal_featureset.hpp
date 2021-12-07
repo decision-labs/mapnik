@@ -66,11 +66,18 @@ public:
                     double dx,
                     double dy,
                     boost::optional<double> const& nodata,
-                    double nodata_tolerance);
+                    double nodata_tolerance,
+                    int64_t max_image_area);
     virtual ~gdal_featureset();
     mapnik::feature_ptr next();
 
 private:
+    void find_best_overview(int bandNumber,
+                            int ideal_width,
+                            int ideal_height,
+                            int & current_width,
+                            int & current_height) const;
+
     mapnik::feature_ptr get_feature(mapnik::query const& q);
     mapnik::feature_ptr get_feature_at_point(mapnik::coord2d const& p);
     GDALDataset & dataset_;
@@ -85,6 +92,7 @@ private:
     int nbands_;
     boost::optional<double> nodata_value_;
     double nodata_tolerance_;
+    int64_t max_image_area_;
     bool first_;
 };
 

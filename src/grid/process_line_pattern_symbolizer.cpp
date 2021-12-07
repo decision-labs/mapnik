@@ -55,6 +55,7 @@ void grid_renderer<T>::process(line_pattern_symbolizer const& sym,
                                mapnik::feature_impl & feature,
                                proj_transform const& prj_trans)
 {
+    METRIC_UNUSED auto t = this->metrics_.measure_time("Grid_PLinePatternS");
     std::string filename = get<std::string, keys::file>(sym, feature, common_.vars_);
     if (filename.empty()) return;
     std::shared_ptr<mapnik::marker const> mark = marker_cache::instance().find(filename, true);
@@ -85,7 +86,9 @@ void grid_renderer<T>::process(line_pattern_symbolizer const& sym,
 
     ras_ptr->reset();
 
-    std::size_t stroke_width = mark->width();
+    line_pattern_enum pattern = get<line_pattern_enum, keys::line_pattern>(sym, feature, common_.vars_);
+    std::size_t stroke_width = (pattern == LINE_PATTERN_WARP) ? mark->width() :
+        get<value_double, keys::stroke_width>(sym, feature, common_.vars_);
 
     agg::trans_affine tr;
     auto transform = get_optional<transform_type>(sym, keys::geometry_transform);
@@ -97,13 +100,11 @@ void grid_renderer<T>::process(line_pattern_symbolizer const& sym,
     box2d<double> clipping_extent = common_.query_extent_;
     if (clip)
     {
-        double padding = (double)(common_.query_extent_.width()/pixmap_.width());
-        double half_stroke = stroke_width/2.0;
-        if (half_stroke > 1)
-            padding *= half_stroke;
-        if (std::fabs(offset) > 0)
-            padding *= std::fabs(offset) * 1.2;
-        padding *= common_.scale_factor_;
+        double pad_per_pixel = static_cast<double>(common_.query_extent_.width()/common_.width_);
+        double pixels = std::ceil(std::max(stroke_width / 2.0 + std::fabs(offset),
+                                          (std::fabs(offset) * offset_converter_default_threshold)));
+        double padding = pad_per_pixel * pixels * common_.scale_factor_;
+
         clipping_extent.pad(padding);
     }
 

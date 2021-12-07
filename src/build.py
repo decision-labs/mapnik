@@ -263,8 +263,10 @@ source = Split(
     renderer_common/render_markers_symbolizer.cpp
     renderer_common/render_pattern.cpp
     renderer_common/render_thunk_extractor.cpp
+    renderer_common/pattern_alignment.cpp
     math.cpp
     value.cpp
+    metrics.cpp
     """
     )
 

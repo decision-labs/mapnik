@@ -52,15 +52,23 @@ struct markers_dispatch_params
 
 struct markers_renderer_context : util::noncopyable
 {
+    markers_renderer_context(metrics &m, bool symbolizer_caches_disabled = false)
+        : metrics_(m)
+        , symbolizer_caches_disabled_(symbolizer_caches_disabled)
+    {}
+
     virtual void render_marker(image_rgba8 const& src,
                                markers_dispatch_params const& params,
                                agg::trans_affine const& marker_tr) = 0;
 
     virtual void render_marker(svg_path_ptr const& src,
                                svg_path_adapter & path,
-                               svg_attribute_type const& attrs,
+                               svg_attribute_type & attrs,
                                markers_dispatch_params const& params,
                                agg::trans_affine const& marker_tr) = 0;
+
+    metrics metrics_;
+    bool symbolizer_caches_disabled_;
 };
 
 MAPNIK_DECL

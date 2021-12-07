@@ -6,6 +6,59 @@ Developers: Please commit along with changes.
 
 For a complete change history, see the git log.
 
+## 3.0.22
+
+Released: January 22, 2019
+
+(Packaged from c338cacd7)
+
+- Improved padding calculation for clipping polygons and lines ([#4001](https://github.com/mapnik/mapnik/pull/4001))
+- New option `line-pattern="repeat"` of LinePatternSymbolizer to repeat the pattern in the area given by `stroke-` options ([#4004](https://github.com/mapnik/mapnik/pull/4004))
+- Fixed global and local pattern alignment ([#4005](https://github.com/mapnik/mapnik/pull/4005))
+- SVG patterns are rendered as vectors into PDF or SVG with Cairo backend ([#4012](https://github.com/mapnik/mapnik/pull/4012))
+
+## 3.0.21
+
+Released: October 8, 2018
+
+(Packaged from 1dbb1d2c1)
+
+#### Core
+
+- Fixed compilation with ICU >= 61 (#3963)
+- Fixed bbox reprojection (#3940)
+- SVG: enabled unsupported attributes handling
+
+#### Plugins
+
+- GDAL: Fixed several issues with overviews (#3939)
+
+
+## 3.0.20
+
+Released: April 12, 2018
+
+(Packaged from f02c7bcdb)
+
+    - Make max_image_area a datasource parameter for GDAL.
+    - GDAL Driver Overview Fix and Memory Reduction (#3872)
+    - Raster colorizer: check image bounds (#3879)
+    - Removed usage of `typename` in template template declarations (available in c++17) (#3882)
+
+## 3.0.19
+
+Released: March 06, 2018
+
+(Packaged from d50562d54)
+
+    - Backported scaling of precision by polygon size  (#3844)
+    - Backported GRID placement (#3847, #3854, #3855)
+    - Added missing `MAPNIK_DECL` to all `text_placement_` types (7ce142a5aa8e9da5ddd11266a054c1e69052230d)
+    - Fixed invalid memory access if input_buffer size is zero (a602c65354a4b595821d2300f38ebc107d07e2a9)
+    - Fixed handling of an empty polygon in grid_vertex_converter (2f2dcf1eeae71aaa7878f4bc9a39741321f07e68)
+    - Fixed PROJ_LIB detection logic (44f1ae3a6e9e9979d1a93343f40db6cd7dbf51d5)
+    - Default to `icu-config` for obtaining `ICU_DATA` if `u_getDataDirectory fails (2cef98d7f76cdd302afcf15f1c585379537e8f1d)
+
 ## 3.0.18
 
 Released: January 26, 2018

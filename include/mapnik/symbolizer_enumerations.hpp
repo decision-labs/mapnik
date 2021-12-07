@@ -138,6 +138,8 @@ enum label_placement_enum : std::uint8_t
     LINE_PLACEMENT,
     VERTEX_PLACEMENT,
     INTERIOR_PLACEMENT,
+    GRID_PLACEMENT,
+    ALTERNATING_GRID_PLACEMENT,
     label_placement_enum_MAX
 };
 
@@ -217,6 +219,14 @@ enum gamma_method_enum : std::uint8_t
 
 DEFINE_ENUM (gamma_method_e, gamma_method_enum );
 
+enum line_pattern_enum : std::uint8_t
+{
+    LINE_PATTERN_WARP,
+    LINE_PATTERN_REPEAT,
+    line_pattern_enum_MAX
+};
+
+DEFINE_ENUM (line_pattern_e, line_pattern_enum );
 
 }
 
