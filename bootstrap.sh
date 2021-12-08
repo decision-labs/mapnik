@@ -8,13 +8,25 @@ todo
 - shrink icu data
 '
 
-MASON_VERSION="fde1d9f5"
+# <<<<<<< HEAD
+# MASON_VERSION="fde1d9f5"
+
+# function setup_mason() {
+#     if [[ ! -d ./.mason ]]; then
+#         git clone https://github.com/mapbox/mason.git .mason || return
+#     elif ! git -C .mason rev-parse -q --verify "$MASON_VERSION" >/dev/null; then
+#         git -C .mason fetch --all || true # non-fatal
+# ======= 
+MASON_VERSION="master" 
 
 function setup_mason() {
     if [[ ! -d ./.mason ]]; then
-        git clone https://github.com/mapbox/mason.git .mason || return
-    elif ! git -C .mason rev-parse -q --verify "$MASON_VERSION" >/dev/null; then
-        git -C .mason fetch --all || true # non-fatal
+        git clone https://github.com/CartoDB/mason.git ./.mason
+        (cd ./.mason && git checkout ${MASON_VERSION})
+    else
+        echo "Updating to latest mason"
+        (cd ./.mason && git fetch && git checkout ${MASON_VERSION} && git pull origin ${MASON_VERSION})
+# >>>>>>> mapnik-v3.0.24-v3.0.15-carto (This is using mason from carto. Commented out for build testing)
     fi
     git -C .mason checkout --detach "$MASON_VERSION" -- || return
     case ":$PATH:" in
@@ -48,19 +60,22 @@ BOOST_VERSION="1.73.0"
 
 function install_mason_deps() {
     install ccache 3.3.1
-    install zlib 1.2.8
-    install jpeg_turbo 1.5.1 libjpeg
-    install libpng 1.6.28 libpng
-    install libtiff 4.0.7 libtiff
-    install libpq 9.6.2
-    install sqlite 3.17.0 libsqlite3
+    install zlib 1.2.11
+    install jpeg_turbo 1.5.2 libjpeg
+    install libpng 1.6.37 libpng
+    install libtiff 4.0.8 libtiff
+    install libpq 10.7
+    install sqlite 3.21.0 libsqlite3
     install expat 2.2.0 libexpat
     install icu ${ICU_VERSION}
-    install proj 4.9.3 libproj
+    install proj 5.2.0 libproj
     install pixman 0.34.0 libpixman-1
-    install cairo 1.14.8 libcairo
+    install cairo 1.14.12 libcairo
+    install protobuf 3.2.0
+    # technically protobuf is not a mapnik core dep, but installing
+    # here by default helps make mapnik-vector-tile builds easier
     install webp 0.6.0 libwebp
-    install libgdal 2.1.3 libgdal
+    install gdal 2.4.1 libgdal
     install boost ${BOOST_VERSION}
     install boost_libsystem ${BOOST_VERSION}
     install boost_libfilesystem ${BOOST_VERSION}
