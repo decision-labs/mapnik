@@ -198,7 +198,8 @@ struct agg_renderer_process_visitor_l
         auto image_transform = get_optional<transform_type>(sym_, keys::image_transform);
         if (image_transform) evaluate_transform(image_tr, feature_, common_.vars_, *image_transform, common_.scale_factor_);
         mapnik::box2d<double> const& bbox_image = marker.get_data()->bounding_box() * image_tr;
-        image_rgba8 image(bbox_image.width(), bbox_image.height());
+        using pixel_type = mapnik::image_rgba8::pixel::type;
+        mapnik::image_rgba8 image(safe_cast<pixel_type>(bbox_image.width()), safe_cast<pixel_type>(bbox_image.height()));
         render_pattern<buffer_type>(marker, image_tr, 1.0, image);
         render_by_pattern_type(image);
     }
@@ -211,8 +212,8 @@ struct agg_renderer_process_visitor_l
 private:
     void render_by_pattern_type(image_rgba8 const& pattern_image) const
     {
-        line_pattern_enum pattern = get<line_pattern_enum, keys::line_pattern>(sym_, feature_, common_.vars_);
-        switch (pattern)
+        line_pattern_enum line_pattern = get<line_pattern_enum, keys::line_pattern>(sym_, feature_, common_.vars_);
+        switch (line_pattern)
         {
             case LINE_PATTERN_WARP:
             {
@@ -258,6 +259,8 @@ void  agg_renderer<T0,T1>::process(line_pattern_symbolizer const& sym,
                                mapnik::feature_impl & feature,
                                proj_transform const& prj_trans)
 {
+    METRIC_UNUSED auto t = agg_renderer::metrics_.measure_time("Agg_PLinePatternS");
+
     std::string filename = get<std::string, keys::file>(sym, feature, common_.vars_);
     if (filename.empty()) return;
     ras_ptr->reset();

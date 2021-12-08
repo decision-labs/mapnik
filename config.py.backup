@@ -1,0 +1,3 @@
+INPUT_PLUGINS = 'csv,gdal,geojson,ogr,pgraster,postgis,raster,shape,sqlite,topojson'
+BOOST_INCLUDES = '/usr/include'
+BOOST_LIBS = '/usr/lib'

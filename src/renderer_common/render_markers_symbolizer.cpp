@@ -2,7 +2,7 @@
  *
  * This file is part of Mapnik (c++ mapping toolkit)
  *
- * Copyright (C) 2016 Artem Pavlenko
+ * Copyright (C) 2017 Artem Pavlenko
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,9 +25,11 @@
 #include <mapnik/svg/svg_path_adapter.hpp>
 #include <mapnik/marker_cache.hpp>
 #include <mapnik/marker_helpers.hpp>
-#include <mapnik/geometry_type.hpp>
 #include <mapnik/renderer_common/render_markers_symbolizer.hpp>
 #include <mapnik/symbolizer.hpp>
+
+#include <atomic>
+#include <memory>
 
 namespace mapnik {
 
@@ -119,9 +121,25 @@ struct render_marker_symbolizer_visitor
 
     void operator() (marker_null const&) const {}
 
-    void operator() (marker_svg const& mark) const
+    void operator() (marker_svg const& mark)
     {
         using namespace mapnik::svg;
+        if (sym_.cacheable.status.load(std::memory_order_relaxed)
+                == markers_symbolizer::cache_status_enum::UNCHECKED)
+        {
+            if (std::all_of(sym_.properties.begin(), sym_.properties.end(),
+                [](symbolizer_base::cont_type::value_type const& key_prop)
+                  { return !is_expression(key_prop.second);}))
+            {
+                sym_.cacheable.status.store(markers_symbolizer::cache_status_enum::CACHEABLE,
+                                            std::memory_order_relaxed);
+            }
+            else
+            {
+                sym_.cacheable.status.store(markers_symbolizer::cache_status_enum::UNCACHEABLE,
+                                            std::memory_order_relaxed);
+            }
+        }
 
         // https://github.com/mapnik/mapnik/issues/1316
         bool snap_to_pixels = !mapnik::marker_cache::instance().is_uri(filename_);
@@ -130,32 +148,53 @@ struct render_marker_symbolizer_visitor
 
         boost::optional<svg_path_ptr> const& stock_vector_marker = mark.get_data();
         svg_path_ptr marker_ptr = *stock_vector_marker;
-        bool is_ellipse = false;
 
-        svg_attribute_type s_attributes;
-        auto const& r_attributes = get_marker_attributes(*stock_vector_marker, s_attributes);
+        std::shared_ptr<svg_attribute_type> r_attributes = nullptr;
 
-        // special case for simple ellipse markers
-        // to allow for full control over rx/ry dimensions
-        if (filename_ == "shape://ellipse"
-           && (has_key(sym_,keys::width) || has_key(sym_,keys::height)))
+        bool cacheable = !renderer_context_.symbolizer_caches_disabled_ &&
+                (sym_.cacheable.status.load(std::memory_order_relaxed) ==
+                        markers_symbolizer::cache_status_enum::CACHEABLE);
+
+        if (cacheable)
         {
-            marker_ptr = std::make_shared<svg_storage_type>();
-            is_ellipse = true;
+            r_attributes = std::atomic_load_explicit(&sym_.cached_attributes, std::memory_order_relaxed);
         }
-        else
+
+        if (r_attributes == nullptr)
+        {
+            renderer_context_.metrics_.measure_add("Agg_PMS_AttrCache_Miss");
+            svg_attribute_type s_attributes;
+            r_attributes = std::make_shared<svg_attribute_type>(get_marker_attributes(*stock_vector_marker, s_attributes));
+
+            std::atomic_store_explicit(&sym_.cached_attributes, r_attributes, std::memory_order_relaxed);
+        }
+
+        if (filename_ != "shape://ellipse" ||
+            !((has_key(sym_,keys::width) || has_key(sym_,keys::height))))
         {
             box2d<double> const& bbox = mark.bounding_box();
             setup_transform_scaling(image_tr, bbox.width(), bbox.height(), feature_, common_.vars_, sym_);
         }
+        else
+        {
+            // special case for simple ellipse markers to allow for full control over rx/ry dimensions
+            // Ellipses are built procedurally. We do caching of the built ellipses, this is useful for rendering stages
+
+            marker_ptr = cacheable ? std::atomic_load_explicit(&sym_.cached_ellipse, std::memory_order_relaxed) : nullptr;
+            if (!marker_ptr)
+            {
+                renderer_context_.metrics_.measure_add("Agg_PMS_EllipseCache_Miss");
+                marker_ptr = std::make_shared<svg_storage_type>();
+                vertex_stl_adapter<svg_path_storage> stl_storage(marker_ptr->source());
+                svg_path_adapter svg_path(stl_storage);
+                build_ellipse(sym_, feature_, common_.vars_, *marker_ptr, svg_path);
+
+                std::atomic_store_explicit(&sym_.cached_ellipse,  marker_ptr, std::memory_order_relaxed);
+            }
+        }
 
         vertex_stl_adapter<svg_path_storage> stl_storage(marker_ptr->source());
         svg_path_adapter svg_path(stl_storage);
-
-        if (is_ellipse)
-        {
-            build_ellipse(sym_, feature_, common_.vars_, *marker_ptr, svg_path);
-        }
 
         if (auto image_transform = get_optional<transform_type>(sym_, keys::image_transform))
         {
@@ -164,7 +203,7 @@ struct render_marker_symbolizer_visitor
 
         vector_dispatch_type rasterizer_dispatch(marker_ptr,
                                                  svg_path,
-                                                 r_attributes,
+                                                 *r_attributes,
                                                  image_tr,
                                                  sym_,
                                                  *common_.detector_,

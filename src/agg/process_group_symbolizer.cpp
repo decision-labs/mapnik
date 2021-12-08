@@ -74,11 +74,10 @@ struct thunk_renderer<image_rgba8> : render_thunk_list_dispatch
         using buf_type = agg::rendering_buffer;
         using pixfmt_comp_type = agg::pixfmt_custom_blend_rgba<blender_type, buf_type>;
         using renderer_base = agg::renderer_base<pixfmt_comp_type>;
-        using renderer_type = agg::renderer_scanline_aa_solid<renderer_base>;
-        using svg_attribute_type = agg::pod_bvector<svg::path_attributes>;
+        using scan_line_renderer_type = agg::renderer_scanline_aa_solid<renderer_base>;
         using svg_renderer_type = svg::svg_renderer_agg<svg_path_adapter,
                                                         svg_attribute_type,
-                                                        renderer_type,
+                                                        scan_line_renderer_type,
                                                         pixfmt_comp_type>;
         ras_ptr_->reset();
         buf_type render_buffer(buf_->bytes(), buf_->width(), buf_->height(), buf_->row_size());
@@ -146,6 +145,7 @@ void agg_renderer<T0,T1>::process(group_symbolizer const& sym,
                                   mapnik::feature_impl & feature,
                                   proj_transform const& prj_trans)
 {
+    METRIC_UNUSED auto t = agg_renderer::metrics_.measure_time("Agg_PGroupS");
     thunk_renderer<buffer_type> ren(*this, ras_ptr, current_buffer_, common_);
 
     render_group_symbolizer(
