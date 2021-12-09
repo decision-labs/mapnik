@@ -40,6 +40,7 @@ class MAPNIK_DECL image<null_t>
 public:
     using pixel_type = null_t::type;
     static const image_dtype dtype = null_t::id;
+    metrics metrics_ = metrics(false);
 private:
 public:
     image() {}

@@ -55,7 +55,8 @@ hit_grid<T>::hit_grid(std::size_t width, std::size_t height, std::string const& 
 
 template <typename T>
 hit_grid<T>::hit_grid(hit_grid<T> const& rhs)
-    : width_(rhs.width_),
+    : metrics_(rhs.metrics_),
+      width_(rhs.width_),
       height_(rhs.height_),
       key_(rhs.key_),
       data_(rhs.data_),
@@ -80,6 +81,7 @@ void hit_grid<T>::clear()
     f_keys_[base_mask] = "";
     data_.set(base_mask);
     ctx_ = std::make_shared<mapnik::context_type>();
+    metrics_ = metrics(false);
 }
 
 template <typename T>

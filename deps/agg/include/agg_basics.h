@@ -16,7 +16,10 @@
 #ifndef AGG_BASICS_INCLUDED
 #define AGG_BASICS_INCLUDED
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
+
 #include "agg_config.h"
 
 //---------------------------------------------------------AGG_CUSTOM_ALLOCATOR
@@ -38,7 +41,7 @@ namespace agg
         //static T*   allocate(unsigned num)       { return static_cast<T*>(::operator new(sizeof(T)*num));}
         //static void deallocate(T* ptr, unsigned) { ::operator delete(ptr) ;}
         static T*   allocate(unsigned num)       { return new T [num]; }
-        static void deallocate(T* ptr, unsigned) { delete [] ptr;      }
+        static void deallocate(T* ptr, unsigned) { if (ptr) delete [] ptr; }
     };
 
     // Single object allocator. It's also can be replaced with your custom
@@ -121,19 +124,23 @@ namespace agg
 
     AGG_INLINE int iround(double v)
     {
-        return int((v < 0.0) ? v - 0.5 : v + 0.5);
+        return static_cast<int>(v < 0.0 ?
+            std::max(v - 0.5, static_cast<double>(std::numeric_limits<int>::lowest())) :
+            std::min(v + 0.5, static_cast<double>(std::numeric_limits<int>::max()))
+        );
     }
     AGG_INLINE int uround(double v)
     {
-        return unsigned(v + 0.5);
+        return static_cast<unsigned>(v < 0.0 ? 0 :
+			std::min(v + 0.5, static_cast<double>(std::numeric_limits<int>::max())));
     }
     AGG_INLINE unsigned ufloor(double v)
     {
-        return unsigned(v);
+        return static_cast<unsigned>(v);
     }
     AGG_INLINE unsigned uceil(double v)
     {
-        return unsigned(std::ceil(v));
+        return static_cast<unsigned>(std::ceil(v));
     }
 
     //---------------------------------------------------------------saturation
@@ -174,12 +181,21 @@ namespace agg
     // The possible coordinate capacity in bits can be calculated by formula:
     // sizeof(int) * 8 - poly_subpixel_shift, i.e, for 32-bit integers and
     // 8-bits fractional part the capacity is 24 bits.
-    enum poly_subpixel_scale_e
+    enum poly_subpixel_scale_e : int
     {
         poly_subpixel_shift = 8,                      //----poly_subpixel_shift
         poly_subpixel_scale = 1<<poly_subpixel_shift, //----poly_subpixel_scale
         poly_subpixel_mask  = poly_subpixel_scale-1  //----poly_subpixel_mask
     };
+
+    AGG_INLINE int poly_subpixel_subscale(int _v)
+    {
+        long int v = _v;
+        return (_v >= 0 ?
+            _v >> poly_subpixel_shift :
+            ((v - poly_subpixel_mask) / poly_subpixel_scale)
+            );
+    }
 
     //----------------------------------------------------------filling_rule_e
     enum filling_rule_e

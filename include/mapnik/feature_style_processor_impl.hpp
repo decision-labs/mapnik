@@ -26,32 +26,44 @@
 //    the template with the desired template arguments.
 
 // mapnik
-#include <mapnik/map.hpp>
-#include <mapnik/debug.hpp>
-#include <mapnik/feature.hpp>
 #include <mapnik/feature_style_processor.hpp>
-#include <mapnik/query.hpp>
-#include <mapnik/datasource.hpp>
-#include <mapnik/feature_type_style.hpp>
-#include <mapnik/box2d.hpp>
-#include <mapnik/layer.hpp>
-#include <mapnik/rule.hpp>
-#include <mapnik/rule_cache.hpp>
+
 #include <mapnik/attribute_collector.hpp>
+#include <mapnik/box2d.hpp>
+#include <mapnik/datasource.hpp>
+#include <mapnik/debug.hpp>
 #include <mapnik/expression_evaluator.hpp>
-#include <mapnik/scale_denominator.hpp>
+#include <mapnik/feature.hpp>
+#include <mapnik/feature_type_style.hpp>
+#include <mapnik/geometry_type.hpp>
+#include <mapnik/geometry_types.hpp>
+#include <mapnik/layer.hpp>
+#include <mapnik/map.hpp>
 #include <mapnik/projection.hpp>
 #include <mapnik/proj_transform.hpp>
+#include <mapnik/query.hpp>
+#include <mapnik/rule.hpp>
+#include <mapnik/rule_cache.hpp>
+#include <mapnik/scale_denominator.hpp>
+#include <mapnik/symbolizer_dispatch.hpp>
 #include <mapnik/util/featureset_buffer.hpp>
 #include <mapnik/util/variant.hpp>
-#include <mapnik/symbolizer_dispatch.hpp>
+
 
 // stl
-#include <vector>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace mapnik
 {
+
+static const char* METRICS_NAME_ALL = "All";
+static const char* METRICS_NAME_SETUP = "Setup";
+static const char* METRICS_NAME_DATASOURCE = "Datasource";
+static const char* METRICS_NAME_RENDER = "Render";
+static const char* METRICS_NAME_RENDER_STYLE = "Render_Style";
 
 // Store material for layer rendering in a two step process
 struct layer_rendering_material
@@ -74,7 +86,8 @@ struct layer_rendering_material
 };
 
 template <typename Processor>
-feature_style_processor<Processor>::feature_style_processor(Map const& m, double scale_factor)
+feature_style_processor<Processor>::feature_style_processor(Map const& m,
+                                                            double scale_factor)
     : m_(m)
 {
     // https://github.com/mapnik/mapnik/issues/1100
@@ -85,8 +98,21 @@ feature_style_processor<Processor>::feature_style_processor(Map const& m, double
 }
 
 template <typename Processor>
+feature_style_processor<Processor>::feature_style_processor(Map const& m,
+                                                            double scale_factor,
+                                                            metrics& metr)
+    : m_(m), metrics_(metr)
+{
+    if (scale_factor <= 0)
+    {
+        throw std::runtime_error("scale_factor must be greater than 0.0");
+    }
+}
+
+template <typename Processor>
 void feature_style_processor<Processor>::apply(double scale_denom)
 {
+    METRIC_UNUSED auto t = metrics_.measure_time(METRICS_NAME_ALL);
     Processor & p = static_cast<Processor&>(*this);
     p.start_map_processing(m_);
 
@@ -149,6 +175,7 @@ void feature_style_processor<Processor>::apply(mapnik::layer const& lyr,
                                                std::set<std::string>& names,
                                                double scale_denom)
 {
+    METRIC_UNUSED auto t = metrics_.measure_time(METRICS_NAME_ALL);
     Processor & p = static_cast<Processor&>(*this);
     p.start_map_processing(m_);
     projection proj(m_.srs(),true);
@@ -219,6 +246,7 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material 
                                                        int buffer_size,
                                                        std::set<std::string>& names)
 {
+    METRIC_UNUSED auto t = metrics_.measure_time(METRICS_NAME_SETUP);
     layer const& lay = mat.lay_;
 
     std::vector<std::string> const& style_names = lay.styles();
@@ -430,12 +458,14 @@ void feature_style_processor<Processor>::prepare_layer(layer_rendering_material 
     std::vector<featureset_ptr> & featureset_ptr_list = mat.featureset_ptr_list_;
     if (!group_by.empty() || cache_features)
     {
+        METRIC_UNUSED auto t2 = metrics_.measure_time(METRICS_NAME_DATASOURCE);
         featureset_ptr_list.push_back(ds->features_with_context(q,current_ctx));
     }
     else
     {
         for(std::size_t i = 0; i < active_styles.size(); ++i)
         {
+            METRIC_UNUSED auto t2 = metrics_.measure_time(METRICS_NAME_DATASOURCE);
             featureset_ptr_list.push_back(ds->features_with_context(q,current_ctx));
         }
     }
@@ -446,6 +476,7 @@ template <typename Processor>
 void feature_style_processor<Processor>::render_material(layer_rendering_material const & mat,
                                                          Processor & p )
 {
+    METRIC_UNUSED auto t = metrics_.measure_time(METRICS_NAME_RENDER);
     std::vector<feature_type_style const*> const & active_styles = mat.active_styles_;
     std::vector<featureset_ptr> const & featureset_ptr_list = mat.featureset_ptr_list_;
     if (featureset_ptr_list.empty())
@@ -470,7 +501,6 @@ void feature_style_processor<Processor>::render_material(layer_rendering_materia
 
     bool cache_features = lay.cache_features() && active_styles.size() > 1;
 
-    datasource_ptr ds = lay.datasource();
     std::string group_by = lay.group_by();
 
     // Render incrementally when the column that we group by changes value.
@@ -566,6 +596,10 @@ void feature_style_processor<Processor>::render_style(
     featureset_ptr features,
     proj_transform const& prj_trans)
 {
+#ifdef MAPNIK_METRICS
+    auto t = metrics_.measure_time(METRICS_NAME_RENDER_STYLE);
+    uint features_count[geometry::geometry_types::TOTAL_SIZE] = {0};
+#endif
     p.start_style_processing(*style);
     if (!features)
     {
@@ -577,6 +611,11 @@ void feature_style_processor<Processor>::render_style(
     bool was_painted = false;
     while ((feature = features->next()))
     {
+#ifdef MAPNIK_METRICS
+        mapnik::geometry::geometry<double> const& geometry = feature->get_geometry();
+        geometry::geometry_types type = geometry::geometry_type(geometry);
+        features_count[type]++;
+#endif
         bool do_else = true;
         bool do_also = false;
         for (rule const* r : rc.get_if_rules() )
@@ -635,8 +674,36 @@ void feature_style_processor<Processor>::render_style(
             }
         }
     }
+
+#ifdef MAPNIK_METRICS
+    if (features_count[geometry::geometry_types::Unknown])
+        metrics_.measure_add("Features_cnt_Unknown",
+                features_count[geometry::geometry_types::Unknown]);
+    if (features_count[geometry::geometry_types::Point])
+        metrics_.measure_add("Features_cnt_Point",
+                features_count[geometry::geometry_types::Point]);
+    if (features_count[geometry::geometry_types::LineString])
+        metrics_.measure_add("Features_cnt_LineString",
+                features_count[geometry::geometry_types::LineString]);
+    if (features_count[geometry::geometry_types::Polygon])
+        metrics_.measure_add("Features_cnt_Polygon",
+                features_count[geometry::geometry_types::Polygon]);
+    if (features_count[geometry::geometry_types::MultiPoint])
+        metrics_.measure_add("Features_cnt_MultiPoint",
+                features_count[geometry::geometry_types::MultiPoint]);
+    if (features_count[geometry::geometry_types::MultiLineString])
+        metrics_.measure_add("Features_cnt_MultiLineString",
+                features_count[geometry::geometry_types::MultiLineString]);
+    if (features_count[geometry::geometry_types::MultiPolygon])
+        metrics_.measure_add("Features_cnt_MultiPolygon",
+                features_count[geometry::geometry_types::MultiPolygon]);
+    if (features_count[geometry::geometry_types::GeometryCollection])
+        metrics_.measure_add("Features_cnt_GeometryCollection",
+                features_count[geometry::geometry_types::GeometryCollection]);
+#endif
+
     p.painted(p.painted() | was_painted);
     p.end_style_processing(*style);
 }
 
-}
+} //namespace mapnik

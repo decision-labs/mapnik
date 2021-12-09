@@ -130,15 +130,13 @@ namespace agg
     {
         if(m_num_blocks)
         {
-            cell_type** ptr = m_cells + m_num_blocks - 1;
-            while(m_num_blocks > 0)
+            for (unsigned i = 0; i < m_num_blocks; i++)
             {
-                pod_allocator<cell_type>::deallocate(*ptr, cell_block_size);
-                ptr--;
-                --m_num_blocks;
+                pod_allocator<cell_type>::deallocate(m_cells[i], cell_block_size);
             }
-            pod_allocator<cell_type*>::deallocate(m_cells, m_max_blocks);
+            m_num_blocks = 0;
         }
+        pod_allocator<cell_type*>::deallocate(m_cells, m_max_blocks);
     }
 
     //------------------------------------------------------------------------
@@ -214,8 +212,8 @@ namespace agg
                                                             int x1, int y1, 
                                                             int x2, int y2)
     {
-        int ex1 = x1 >> poly_subpixel_shift;
-        int ex2 = x2 >> poly_subpixel_shift;
+        int ex1 = x1 / poly_subpixel_scale;
+        int ex2 = x2 / poly_subpixel_scale;
         int fx1 = x1 & poly_subpixel_mask;
         int fx2 = x2 & poly_subpixel_mask;
 
@@ -319,7 +317,7 @@ namespace agg
     {
         enum dx_limit_e { dx_limit = 16384 << poly_subpixel_shift };
 
-        int dx = x2 - x1;
+        long int dx = static_cast<long int>(x2) - static_cast<long int>(x1);
 
         if(dx >= dx_limit || dx <= -dx_limit)
         {
@@ -335,11 +333,11 @@ namespace agg
             line(cx, cy, x2, y2);
         }
 
-        int dy = y2 - y1;
-        int ex1 = x1 >> poly_subpixel_shift;
-        int ex2 = x2 >> poly_subpixel_shift;
-        int ey1 = y1 >> poly_subpixel_shift;
-        int ey2 = y2 >> poly_subpixel_shift;
+        int dy = agg::iround(static_cast<double>(y2) - static_cast<double>(y1));
+        int ex1 = poly_subpixel_subscale(x1);
+        int ex2 = poly_subpixel_subscale(x2);
+        int ey1 = poly_subpixel_subscale(y1);
+        int ey2 = poly_subpixel_subscale(y2);
         int fy1 = y1 & poly_subpixel_mask;
         int fy2 = y2 & poly_subpixel_mask;
 
@@ -371,8 +369,8 @@ namespace agg
         incr  = 1;
         if(dx == 0)
         {
-            int ex = x1 >> poly_subpixel_shift;
-            int two_fx = (x1 - (ex << poly_subpixel_shift)) << 1;
+            int ex = poly_subpixel_subscale(x1);
+            int two_fx = (x1 - (ex * poly_subpixel_scale)) * 2;
             int area;
 
             first = poly_subpixel_scale;
@@ -434,7 +432,7 @@ namespace agg
         render_hline(ey1, x1, fy1, x_from, first);
 
         ey1 += incr;
-        set_curr_cell(x_from >> poly_subpixel_shift, ey1);
+        set_curr_cell(poly_subpixel_subscale(x_from), ey1);
 
         if(ey1 != ey2)
         {
@@ -464,7 +462,7 @@ namespace agg
                 x_from = x_to;
 
                 ey1 += incr;
-                set_curr_cell(x_from >> poly_subpixel_shift, ey1);
+                set_curr_cell(poly_subpixel_subscale(x_from), ey1);
             }
         }
         render_hline(ey1, x_from, poly_subpixel_scale - first, x2, fy2);
@@ -660,35 +658,35 @@ namespace agg
         m_sorted_y.zero();
 
         // Create the Y-histogram (count the numbers of cells for each Y)
-        cell_type** block_ptr = m_cells;
-        cell_type*  cell_ptr;
-        unsigned nb = m_num_cells >> cell_block_shift;
-        unsigned i;
-        while(nb > 0)
-        {
-            cell_ptr = *block_ptr++;
-            i = cell_block_size;
-            while(i > 0)
-            {
-                m_sorted_y[cell_ptr->y - m_min_y].start++;
-                ++cell_ptr;
-                --i;
-            }
-            --nb;
-        }
 
-        cell_ptr = *block_ptr++;
-        i = m_num_cells & cell_block_mask;
-        while(i > 0)
+        /* This code is simpler but it involves shifting and & every iteration: */
+//        for (unsigned n = 0; n < m_num_cells; n++)
+//        {
+//            unsigned block = n >> cell_block_shift;
+//            unsigned i = n & cell_block_mask;
+//            m_sorted_y[m_cells[block][i].y - m_min_y].start++;
+//        }
+        /* Instead we iterate and check full blocks first and then the last incomplete one */
+        unsigned processed_cells = 0;
+        for (unsigned block = 0; block < m_num_cells >> cell_block_shift; block++)
         {
-            m_sorted_y[cell_ptr->y - m_min_y].start++;
-            ++cell_ptr;
-            --i;
+            for (unsigned i = 0; i < cell_block_size; i++)
+            {
+                m_sorted_y[m_cells[block][i].y - m_min_y].start++;
+                processed_cells++;
+            }
+        }
+        if (processed_cells != m_num_cells)
+        {
+            unsigned block = m_num_cells >> cell_block_shift;
+            for (unsigned i = 0; i < m_num_cells - processed_cells; i++)
+            {
+                m_sorted_y[m_cells[block][i].y - m_min_y].start++;
+            }
         }
 
         // Convert the Y-histogram into the array of starting indexes
-        unsigned start = 0;
-        for(i = 0; i < m_sorted_y.size(); i++)
+        for(unsigned i = 0, start = 0; i < m_sorted_y.size(); i++)
         {
             unsigned v = m_sorted_y[i].start;
             m_sorted_y[i].start = start;
@@ -696,39 +694,45 @@ namespace agg
         }
 
         // Fill the cell pointer array sorted by Y
-        block_ptr = m_cells;
-        nb = m_num_cells >> cell_block_shift;
-        while(nb > 0)
+
+        /* As above, this is simpler code but uses >> and & each iteration */
+//        for (unsigned n = 0; n < m_num_cells; n++)
+//        {
+//            unsigned block = n >> cell_block_shift;
+//            unsigned i = n & cell_block_mask;
+//            cell_type* cell_n = &m_cells[block][i];
+//            sorted_y& curr_y = m_sorted_y[cell_n->y - m_min_y];
+//            m_sorted_cells[curr_y.start + curr_y.num] = cell_n;
+//            curr_y.num++;
+//        }
+        /* The equivalent code to the commented one but checking by block */
+        for (unsigned block = 0; block < m_num_cells >> cell_block_shift; block++)
         {
-            cell_ptr = *block_ptr++;
-            i = cell_block_size;
-            while(i > 0)
+            for (unsigned i = 0; i < cell_block_size; i++)
             {
-                sorted_y& curr_y = m_sorted_y[cell_ptr->y - m_min_y];
-                m_sorted_cells[curr_y.start + curr_y.num] = cell_ptr;
-                ++curr_y.num;
-                ++cell_ptr;
-                --i;
+                cell_type* cell_n = &m_cells[block][i];
+                sorted_y& curr_y = m_sorted_y[cell_n->y - m_min_y];
+                m_sorted_cells[curr_y.start + curr_y.num] = cell_n;
+                curr_y.num++;
             }
-            --nb;
         }
-        
-        cell_ptr = *block_ptr++;
-        i = m_num_cells & cell_block_mask;
-        while(i > 0)
+        if (processed_cells != m_num_cells)
         {
-            sorted_y& curr_y = m_sorted_y[cell_ptr->y - m_min_y];
-            m_sorted_cells[curr_y.start + curr_y.num] = cell_ptr;
-            ++curr_y.num;
-            ++cell_ptr;
-            --i;
+            unsigned block = m_num_cells >> cell_block_shift;
+            for (unsigned i = 0; i < m_num_cells - processed_cells; i++)
+            {
+                cell_type* cell_n = &m_cells[block][i];
+                sorted_y& curr_y = m_sorted_y[cell_n->y - m_min_y];
+                m_sorted_cells[curr_y.start + curr_y.num] = cell_n;
+                curr_y.num++;
+            }
         }
 
         // Finally arrange the X-arrays
-        for(i = 0; i < m_sorted_y.size(); i++)
+        for (unsigned i = 0; i < m_sorted_y.size(); i++)
         {
             const sorted_y& curr_y = m_sorted_y[i];
-            if(curr_y.num)
+            if (curr_y.num)
             {
                 qsort_cells(m_sorted_cells.data() + curr_y.start, curr_y.num);
             }
